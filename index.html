@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#050706">
+<title>Anomaly — Night Watch</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=VT323&family=IBM+Plex+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- ============ TITLE ============ -->
+<section id="screen-title" class="screen active">
+  <div class="title-wrap">
+    <div class="title-rec"><span class="rec-dot"></span> REC</div>
+    <h1 class="title">ANOMALY</h1>
+    <p class="subtitle">Residential night watch. Monitor all feeds until 06:00.</p>
+    <div class="title-status" id="title-status"></div>
+    <div class="title-buttons">
+      <button class="btn primary" id="btn-begin">Begin shift</button>
+      <button class="btn" id="btn-setup">Set up house</button>
+      <button class="btn ghost" id="btn-demo">Load demo house</button>
+    </div>
+    <details class="howto">
+      <summary>Duty instructions</summary>
+      <ol>
+        <li>Each camera shows a room in your home. Learn what it normally looks like.</li>
+        <li>Something enters through the farthest room and moves one room closer at a time.</li>
+        <li>When a room looks wrong, press <b>REPORT</b> and mark the wrong thing on the image.</li>
+        <li>False reports raise interference and lock the console briefly.</li>
+        <li>If it reaches your room, the shift is over. Survive until 06:00.</li>
+      </ol>
+      <p class="muted">Keys: 1–9 cameras · V switch angle · R report · Esc cancel</p>
+    </details>
+  </div>
+</section>
+
+<!-- ============ SETUP ============ -->
+<section id="screen-setup" class="screen">
+  <header class="setup-head">
+    <button class="btn ghost small" data-goto="title">‹ Back</button>
+    <h2>House setup</h2>
+    <span></span>
+  </header>
+  <nav class="tabs" id="setup-tabs">
+    <button class="tab active" data-tab="rooms">1 Rooms</button>
+    <button class="tab" data-tab="layout">2 Layout</button>
+    <button class="tab" data-tab="anomalies">3 Anomalies</button>
+    <button class="tab" data-tab="begin">4 Begin</button>
+  </nav>
+
+  <div class="tab-panel active" id="tab-rooms">
+    <div class="notice">
+      <b>Privacy.</b> Photos are stored only in this browser (IndexedDB) on this device.
+      They are sent to an AI service <b>only</b> if you press “Calibrate cameras” with AI generation (Mode A) enabled.
+      Manual anomaly images (Mode B) and the procedural fallback never leave the device.
+    </div>
+    <p class="muted">Add 1–2 photos per room, taken from where a security camera would sit (high corner, wide angle, lights as they are at night). Mark the room you will be sitting in while playing.</p>
+    <div class="quick-add" id="quick-add"></div>
+    <div id="room-list" class="room-list"></div>
+    <button class="btn" id="btn-add-room">+ Add room</button>
+  </div>
+
+  <div class="tab-panel" id="tab-layout">
+    <p class="muted">Which rooms connect directly to each other? The anomaly walks this graph toward your room, one room per step.</p>
+    <button class="btn small" id="btn-chain">Auto: chain rooms in list order</button>
+    <div id="layout-list" class="layout-list"></div>
+    <div id="layout-paths" class="layout-paths"></div>
+  </div>
+
+  <div class="tab-panel" id="tab-anomalies">
+    <div class="card">
+      <h3>Mode A — AI generated</h3>
+      <p class="muted">Sends each room photo plus a varied prompt to an image-editing model and stores the result. The changed area is located by comparing before/after.</p>
+      <div class="form-grid">
+        <label>Provider
+          <select id="ai-provider">
+            <option value="none">Off</option>
+            <option value="gemini">Google Gemini (image edit)</option>
+            <option value="openai">OpenAI (images/edits)</option>
+          </select>
+        </label>
+        <label>Model <input id="ai-model" type="text" spellcheck="false"></label>
+        <label>API key <input id="ai-key" type="password" autocomplete="off" placeholder="from config.js, or paste here"></label>
+        <label>Anomalies per room <input id="ai-count" type="number" min="1" max="6" value="2"></label>
+      </div>
+      <p class="muted small" id="ai-key-source"></p>
+      <button class="btn primary" id="btn-calibrate">Calibrate cameras</button>
+    </div>
+
+    <div class="card">
+      <h3>Mode B — Upload your own anomaly images</h3>
+      <p class="muted">Edit a room photo in ChatGPT or Gemini, then upload the result here and mark where the anomaly is.</p>
+      <label class="btn">Upload anomaly image(s)
+        <input type="file" id="manual-file" accept="image/*" multiple hidden>
+      </label>
+      <details class="prompt-helper">
+        <summary>Prompt helper — ready-to-copy prompts</summary>
+        <p class="muted small">Open ChatGPT or Gemini, attach one of your room photos, paste a prompt, download the result and upload it above. Pick the original photo it was made from so the game can suggest the area automatically.</p>
+        <div id="prompt-helper-list"></div>
+      </details>
+    </div>
+
+    <div class="card">
+      <h3>Library</h3>
+      <label class="check"><input type="checkbox" id="coop-hide"> Co-op: hide anomaly images and descriptions (the player should not see these)</label>
+      <label class="check"><input type="checkbox" id="use-fallback" checked> Use procedural anomalies when a room runs out of prepared ones</label>
+      <div id="library" class="library"></div>
+    </div>
+  </div>
+
+  <div class="tab-panel" id="tab-begin">
+    <div id="begin-summary" class="begin-summary"></div>
+    <div class="form-grid">
+      <label>Start at night <input id="night-select" type="number" min="1" max="10" value="1"></label>
+      <label>Night length (real minutes) <input id="night-length" type="number" min="2" max="20" value="7"></label>
+    </div>
+    <button class="btn primary" id="btn-start-from-setup">Begin shift</button>
+    <hr>
+    <button class="btn danger small" id="btn-reset">Erase all house data</button>
+  </div>
+</section>
+
+<!-- ============ CALIBRATION ============ -->
+<section id="screen-calibrate" class="screen">
+  <div class="calib">
+    <h2 class="blink">Calibrating cameras…</h2>
+    <div class="progress"><div id="calib-bar"></div></div>
+    <pre id="calib-log" class="calib-log"></pre>
+    <button class="btn" id="btn-calib-done" disabled>Continue</button>
+  </div>
+</section>
+
+<!-- ============ GAME ============ -->
+<section id="screen-game" class="screen">
+  <div class="console">
+    <div class="topbar">
+      <span id="hud-night">NIGHT 1</span>
+      <span id="hud-clock" class="clock">00:00</span>
+      <span class="interf">INTERFERENCE <span class="meter"><span id="hud-stress"></span></span></span>
+    </div>
+
+    <div class="monitor-area" id="monitor-area">
+      <div class="monitor" id="monitor">
+        <canvas id="feed"></canvas>
+        <div class="scanlines"></div>
+        <div class="vignette"></div>
+        <div class="osd osd-tl"><span class="rec-dot"></span> REC <span id="osd-date"></span></div>
+        <div class="osd osd-bl" id="osd-cam">CAM 01 - ROOM - 00:00:00</div>
+        <div class="osd osd-tr" id="osd-view"></div>
+        <div class="osd-center" id="osd-center"></div>
+        <div class="report-hint" id="report-hint">MARK THE ANOMALY</div>
+        <div id="debug-layer"></div>
+      </div>
+    </div>
+
+    <div class="controls">
+      <div class="cams" id="cam-buttons"></div>
+      <div class="actions">
+        <button class="btn" id="btn-view">Angle</button>
+        <button class="btn report" id="btn-report">Report</button>
+      </div>
+    </div>
+    <div class="log" id="log"></div>
+  </div>
+  <div class="jumpscare" id="jumpscare"><canvas id="js-canvas"></canvas></div>
+</section>
+
+<!-- ============ END ============ -->
+<section id="screen-end" class="screen">
+  <div class="end">
+    <h2 id="end-title"></h2>
+    <pre id="end-text"></pre>
+    <div class="title-buttons">
+      <button class="btn primary" id="btn-end-next"></button>
+      <button class="btn" data-goto="title">Return to console</button>
+    </div>
+  </div>
+</section>
+
+<!-- ============ MODAL: anomaly editor ============ -->
+<div class="modal" id="editor" hidden>
+  <div class="modal-box">
+    <h3>Mark the anomaly</h3>
+    <p class="muted small">Drag a rectangle over what is wrong. This becomes the area the player must click.</p>
+    <div class="editor-stage" id="editor-stage">
+      <img id="editor-img" alt="">
+      <div class="editor-rect" id="editor-rect"></div>
+    </div>
+    <div class="form-grid">
+      <label>Room <select id="ed-room"></select></label>
+      <label>Original photo <select id="ed-base"></select></label>
+      <label>Difficulty
+        <select id="ed-diff">
+          <option value="1">1 · Subtle</option>
+          <option value="2">2 · Strange</option>
+          <option value="3">3 · Creepy</option>
+          <option value="4">4 · Severe</option>
+        </select>
+      </label>
+      <label>Description <input id="ed-desc" type="text" placeholder="e.g. chair turned to face the wall"></label>
+    </div>
+    <p class="muted small" id="ed-status"></p>
+    <div class="modal-buttons">
+      <button class="btn small" id="ed-auto">Suggest area from difference</button>
+      <span class="spacer"></span>
+      <button class="btn ghost" id="ed-cancel">Cancel</button>
+      <button class="btn primary" id="ed-save">Save</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- config.example.js holds defaults; config.js (git-ignored, optional) overrides them -->
+<script src="config.example.js"></script>
+<script src="config.js" onerror="void 0"></script>
+<script src="js/storage.js"></script>
+<script src="js/imageutil.js"></script>
+<script src="js/prompts.js"></script>
+<script src="js/procedural.js"></script>
+<script src="js/ai.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/monitor.js"></script>
+<script src="js/game.js"></script>
+<script src="js/editor.js"></script>
+<script src="js/setup.js"></script>
+<script src="js/demo.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
