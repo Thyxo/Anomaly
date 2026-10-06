@@ -1,0 +1,2 @@
+# Never upload a local key file when deploying from this folder
+config.js

@@ -5,10 +5,10 @@ Something comes in through the room farthest from you and moves one room closer 
 Spot what is wrong, report it, and survive until 06:00.
 
 > ## ⚠️ Private game — never publish it with a key
-> AI generation (Mode A) calls the image API **directly from the browser**, so the API key sits in `config.js`
-> and anyone who can open the page can read it. `config.js` is git-ignored on purpose.
-> **Never publish the game folder, a fork or a hosted copy (e.g. GitHub Pages) with a key inside it.**
-> Keep the repository private, and do not commit `config.js`.
+> AI generation (Mode A) calls the image API **directly from the browser**. A key put in `config.js` can be read
+> by anyone who can open that copy of the page. `config.js` is git-ignored on purpose.
+> **Never publish the game folder, a fork or a hosted copy (e.g. GitHub Pages, Vercel) with a key inside it.**
+> On a hosted copy, paste the key in the game instead (it is kept only until the tab closes).
 
 ---
 
@@ -26,13 +26,21 @@ No install or build step. It is plain HTML/CSS/JavaScript.
 ### Turning on AI anomalies (Mode A)
 1. Copy `config.example.js` to `config.js`.
 2. Set `provider` to `'gemini'` or `'openai'` and fill in the matching `apiKey` (and model if you like).
-   You can also paste a key on the Anomalies tab; it is then kept in this browser's `localStorage`.
+   **Or** (recommended for a hosted copy) leave the key out of every file and paste it on the Anomalies tab each time.
+   A pasted key is kept in `sessionStorage`: it survives a page reload but is forgotten when the tab closes,
+   and it is never written into the code or sent anywhere except the AI provider.
 3. In **House setup → Anomalies**, press **Calibrate cameras**.
 
 ### Privacy
 Photos are stored only in the browser (IndexedDB) on the device. They are sent to an AI service **only** when you
 press *Calibrate cameras* with Mode A enabled. Manual uploads (Mode B) and procedural anomalies never leave the device.
 The game says this on the setup screen before the first upload.
+
+### Hosting it (e.g. Vercel)
+It's a static site, so any static host works. On Vercel, import the repository with no framework preset and
+no build command. `config.js` is git-ignored and listed in `.vercelignore`, so a key can't be deployed by accident.
+Use the paste-a-key option above on the hosted copy. The site itself contains no secrets, and photos never leave
+each player's own browser, so sharing the URL only shares the empty game.
 
 ---
 

@@ -230,8 +230,8 @@ const Setup = (() => {
     $('ai-count').value = s.perRoom;
     $('ai-key-source').textContent = s.provider === 'none' ? 'AI generation is off. Manual and procedural anomalies still work.'
       : s.keyFromConfig ? 'Using the API key from config.js.'
-      : s.apiKey ? 'Using the API key stored in this browser (localStorage).'
-      : 'No API key yet. Put it in config.js or paste it above.';
+      : s.apiKey ? 'Key kept for this tab only. It is forgotten when you close the tab.'
+      : 'Paste your API key above. It is kept only until you close this tab (or put it in config.js on your own computer).';
     $('btn-calibrate').disabled = !AI.available();
   }
 

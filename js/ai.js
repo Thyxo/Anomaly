@@ -2,37 +2,54 @@
 // Both Gemini and OpenAI accept browser requests with an API key; the key is
 // therefore visible to anyone who has this page. Keep the game private.
 const AI = (() => {
-  const LS_KEY = 'anomaly.ai';
+  const LS_KEY = 'anomaly.ai';         // provider, model, count: remembered on this device
+  const SS_KEY = 'anomaly.ai.keys';    // pasted API keys: this tab only, gone when it closes
+
+  const read = (store, key) => { try { return JSON.parse(store.getItem(key) || '{}'); } catch { return {}; } };
+  const write = (store, key, v) => { try { store.setItem(key, JSON.stringify(v)); } catch { /* ignore */ } };
+
+  // Older versions kept pasted keys in localStorage; move them out.
+  (() => {
+    const local = read(localStorage, LS_KEY);
+    let changed = false;
+    for (const p of ['gemini', 'openai']) {
+      if (local[p] && local[p].apiKey) { delete local[p].apiKey; changed = true; }
+    }
+    if (changed) write(localStorage, LS_KEY, local);
+  })();
 
   function settings() {
     const cfg = window.ANOMALY_CONFIG || {};
-    let local = {};
-    try { local = JSON.parse(localStorage.getItem(LS_KEY) || '{}'); } catch { /* ignore */ }
+    const local = read(localStorage, LS_KEY);
+    const keys = read(sessionStorage, SS_KEY);
     const provider = local.provider || cfg.provider || 'none';
     const base = (cfg[provider] || {});
     const loc = (local[provider] || {});
     return {
       provider,
       model: loc.model || base.model || '',
-      apiKey: loc.apiKey || base.apiKey || '',
-      keyFromConfig: !loc.apiKey && !!base.apiKey,
+      apiKey: keys[provider] || base.apiKey || '',
+      keyFromConfig: !keys[provider] && !!base.apiKey,
       quality: base.quality || 'medium',
       perRoom: Number(local.perRoom || cfg.aiAnomaliesPerRoom || 2),
     };
   }
 
   function saveSettings(patch) {
-    let local = {};
-    try { local = JSON.parse(localStorage.getItem(LS_KEY) || '{}'); } catch { /* ignore */ }
+    const local = read(localStorage, LS_KEY);
     if (patch.provider !== undefined) local.provider = patch.provider;
     if (patch.perRoom !== undefined) local.perRoom = patch.perRoom;
     const p = patch.provider || local.provider;
-    if (p && (patch.model !== undefined || patch.apiKey !== undefined)) {
+    if (p && patch.model !== undefined) {
       local[p] = local[p] || {};
-      if (patch.model !== undefined) local[p].model = patch.model;
-      if (patch.apiKey !== undefined) local[p].apiKey = patch.apiKey;
+      local[p].model = patch.model;
     }
-    try { localStorage.setItem(LS_KEY, JSON.stringify(local)); } catch { /* ignore */ }
+    write(localStorage, LS_KEY, local);
+    if (p && patch.apiKey !== undefined) {
+      const keys = read(sessionStorage, SS_KEY);
+      if (patch.apiKey) keys[p] = patch.apiKey; else delete keys[p];
+      write(sessionStorage, SS_KEY, keys);
+    }
   }
 
   function defaultModel(provider) {
