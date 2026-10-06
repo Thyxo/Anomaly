@@ -12,6 +12,7 @@ const Monitor = (() => {
     canvas = canvasEl; box = boxEl; area = areaEl;
     ctx = canvas.getContext('2d');
     window.addEventListener('resize', layout);
+    document.addEventListener('fullscreenchange', layout);
   }
 
   function configure(opts) {
@@ -72,10 +73,11 @@ const Monitor = (() => {
     layout();
   }
 
-  // Fit the monitor box into the available area, keeping the frame's aspect ratio.
+  // Fit the picture to the whole screen, keeping its aspect ratio (no cropping,
+  // so nothing that must be reported can end up off-screen).
   function layout() {
     if (!area || !canvas.width) return;
-    const aw = area.clientWidth - 16, ah = area.clientHeight - 8;
+    const aw = area.clientWidth, ah = area.clientHeight;
     if (aw <= 0 || ah <= 0) return;
     const r = canvas.width / canvas.height;
     let w = aw, h = aw / r;

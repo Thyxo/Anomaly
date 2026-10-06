@@ -293,6 +293,10 @@ const Setup = (() => {
       t.appendChild(r);
       const meta = el('div', 'lib-meta');
       meta.appendChild(el('span', '', `${roomName(a.roomId)} · ${Prompts.DIFFICULTY[a.difficulty]} · ${a.source.toUpperCase()}${a.approx ? ' ~' : ''}`));
+      const save = el('button', 'save', 'save');
+      save.title = 'Download this image';
+      save.onclick = () => Backup.downloadImage(a.imageId, `${a.source}-${Backup.slug(roomName(a.roomId))}-${Prompts.DIFFICULTY[a.difficulty].toLowerCase()}`);
+      meta.appendChild(save);
       const del = el('button', '', 'delete');
       del.onclick = () => {
         h.anomalies = h.anomalies.filter(x => x !== a);
@@ -403,6 +407,7 @@ const Setup = (() => {
       }
     }
     say(`\nCalibration complete. ${ok}/${total} AI anomalies stored.`);
+    if (ok) say('Tip: “Export house” on the Anomalies tab saves a copy you can import again later.');
     if (authFailures >= 2) say('Several requests were refused. Check the API key, model name and billing.');
     done.disabled = false;
   }
@@ -425,6 +430,7 @@ const Setup = (() => {
     $('btn-start-from-setup').disabled = !v.ok;
     $('night-select').value = App.night();
     $('night-length').value = App.nightLength();
+    $('grace-seconds').value = App.graceSeconds();
   }
 
   // ---------- wiring ----------
@@ -451,6 +457,32 @@ const Setup = (() => {
 
     $('night-select').onchange = e => App.setNight(Math.max(1, Number(e.target.value) || 1));
     $('night-length').onchange = e => App.setNightLength(Math.max(2, Math.min(20, Number(e.target.value) || 7)));
+    $('grace-seconds').onchange = e => App.setGraceSeconds(Math.max(0, Math.min(300, Number(e.target.value) || 0)));
+
+    $('btn-export').onclick = async () => {
+      const h = house();
+      if (!h.rooms.length) { App.toast('Nothing to export yet.'); return; }
+      $('btn-export').disabled = true;
+      try {
+        const r = await Backup.exportHouse(h);
+        App.toast(`Exported ${r.photos} photos and ${r.anomalies} anomalies.`);
+      } catch (e) { App.toast('Export failed: ' + e.message); }
+      $('btn-export').disabled = false;
+    };
+    $('import-file').onchange = async e => {
+      const f = e.target.files[0];
+      e.target.value = '';
+      if (!f) return;
+      try {
+        const imported = await Backup.importHouse(f, async summary =>
+          !house().rooms.length || confirm(`Replace your current house with the imported one (${summary})?`));
+        if (!imported) return;
+        App.house = imported;
+        await App.save();
+        App.toast(`Imported ${imported.rooms.length} rooms and ${imported.anomalies.length} anomalies.`);
+        render();
+      } catch (err) { App.toast('Import failed: ' + err.message); }
+    };
     $('btn-start-from-setup').onclick = () => App.startNight();
     $('btn-reset').onclick = async () => {
       if (!confirm('Erase all rooms, photos and anomalies from this browser?')) return;

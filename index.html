@@ -4,6 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#050706">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.webmanifest">
 <title>Anomaly — Night Watch</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=VT323&family=IBM+Plex+Mono:wght@400;600&display=swap">
@@ -26,10 +30,11 @@
     <details class="howto">
       <summary>Duty instructions</summary>
       <ol>
-        <li>Each camera shows a room in your home. Learn what it normally looks like.</li>
+        <li>Each camera shows a room in your home. Learn what it normally looks like — the first 30 seconds are quiet.</li>
         <li>Something enters through the farthest room and moves one room closer at a time.</li>
         <li>When a room looks wrong, press <b>REPORT</b> and mark the wrong thing on the image.</li>
-        <li>False reports raise interference and lock the console briefly.</li>
+        <li>Nothing changes while you are looking at it. Changes happen on the feeds you are not watching.</li>
+        <li>False reports, and watching one camera for too long, raise interference. At 100% every feed drops.</li>
         <li>If it reaches your room, the shift is over. Survive until 06:00.</li>
       </ol>
       <p class="muted">Keys: 1–9 cameras · V switch angle · R report · Esc cancel</p>
@@ -107,6 +112,13 @@
       <h3>Library</h3>
       <label class="check"><input type="checkbox" id="coop-hide"> Co-op: hide anomaly images and descriptions (the player should not see these)</label>
       <label class="check"><input type="checkbox" id="use-fallback" checked> Use procedural anomalies when a room runs out of prepared ones</label>
+      <div class="room-buttons backup-buttons">
+        <button class="btn small" id="btn-export">Export house (.zip)</button>
+        <label class="btn small">Import house (.zip)
+          <input type="file" id="import-file" accept=".zip,application/zip" hidden>
+        </label>
+      </div>
+      <p class="muted small">The export holds your photos, every AI and manual anomaly image, the layout and the marked areas. Import it later (or on another device) to reuse everything without generating again.</p>
       <div id="library" class="library"></div>
     </div>
   </div>
@@ -116,6 +128,7 @@
     <div class="form-grid">
       <label>Start at night <input id="night-select" type="number" min="1" max="10" value="1"></label>
       <label>Night length (real minutes) <input id="night-length" type="number" min="2" max="20" value="7"></label>
+      <label>Quiet start (seconds before anything appears) <input id="grace-seconds" type="number" min="0" max="300" value="30"></label>
     </div>
     <button class="btn primary" id="btn-start-from-setup">Begin shift</button>
     <hr>
@@ -135,35 +148,38 @@
 
 <!-- ============ GAME ============ -->
 <section id="screen-game" class="screen">
-  <div class="console">
-    <div class="topbar">
-      <span id="hud-night">NIGHT 1</span>
-      <span id="hud-clock" class="clock">00:00</span>
-      <span class="interf">INTERFERENCE <span class="meter"><span id="hud-stress"></span></span></span>
+  <div class="monitor-area" id="monitor-area">
+    <div class="monitor" id="monitor">
+      <canvas id="feed"></canvas>
+      <div class="osd-center" id="osd-center"></div>
+      <div class="report-hint" id="report-hint">MARK THE ANOMALY</div>
+      <div id="debug-layer"></div>
     </div>
+  </div>
+  <div class="scanlines"></div>
+  <div class="vignette"></div>
 
-    <div class="monitor-area" id="monitor-area">
-      <div class="monitor" id="monitor">
-        <canvas id="feed"></canvas>
-        <div class="scanlines"></div>
-        <div class="vignette"></div>
-        <div class="osd osd-tl"><span class="rec-dot"></span> REC <span id="osd-date"></span></div>
-        <div class="osd osd-bl" id="osd-cam">CAM 01 - ROOM - 00:00:00</div>
-        <div class="osd osd-tr" id="osd-view"></div>
-        <div class="osd-center" id="osd-center"></div>
-        <div class="report-hint" id="report-hint">MARK THE ANOMALY</div>
-        <div id="debug-layer"></div>
+  <!-- camera overlay on top of the picture -->
+  <div class="hud" id="hud">
+    <div class="hud-top">
+      <div class="osd"><span class="rec-dot"></span> REC <span id="osd-date"></span></div>
+      <div class="hud-right">
+        <span id="hud-night" class="osd">NIGHT 1</span>
+        <span class="interf osd">INTERFERENCE <span class="meter"><span id="hud-stress"></span></span></span>
+        <button class="icon-btn" id="btn-fullscreen" title="Fullscreen" aria-label="Fullscreen">⛶</button>
       </div>
     </div>
-
-    <div class="controls">
-      <div class="cams" id="cam-buttons"></div>
-      <div class="actions">
-        <button class="btn" id="btn-view">Angle</button>
-        <button class="btn report" id="btn-report">Report</button>
+    <div class="hud-bottom">
+      <div class="log" id="log"></div>
+      <div class="osd osd-cam"><span id="osd-cam">CAM 01 - ROOM - 00:00:00</span> <span id="osd-view"></span></div>
+      <div class="controls">
+        <div class="cams" id="cam-buttons"></div>
+        <div class="actions">
+          <button class="btn" id="btn-view">Angle</button>
+          <button class="btn report" id="btn-report">Report</button>
+        </div>
       </div>
     </div>
-    <div class="log" id="log"></div>
   </div>
   <div class="jumpscare" id="jumpscare"><canvas id="js-canvas"></canvas></div>
 </section>
@@ -218,6 +234,7 @@
 <script src="config.example.js"></script>
 <script src="config.js" onerror="void 0"></script>
 <script src="js/storage.js"></script>
+<script src="js/zip.js"></script>
 <script src="js/imageutil.js"></script>
 <script src="js/prompts.js"></script>
 <script src="js/procedural.js"></script>
@@ -228,6 +245,7 @@
 <script src="js/editor.js"></script>
 <script src="js/setup.js"></script>
 <script src="js/demo.js"></script>
+<script src="js/backup.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>

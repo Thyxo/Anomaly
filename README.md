@@ -48,19 +48,24 @@ each player's own browser, so sharing the URL only shares the empty game.
 
 1. **Setup.** Add rooms, 1–2 photos each, name them, mark **Your room** (the room you're actually sitting in).
    On the Layout tab, connect rooms that open into each other (e.g. hallway — living room — your room).
-2. **Night.** 00:00 → 06:00 takes ~7 real minutes (adjustable). Switch between cameras (and between the two
-   angles of a room if it has two photos).
+2. **Night.** 00:00 → 06:00 takes ~7 real minutes (adjustable). The feed fills the whole screen with the camera
+   overlay on top; it enters fullscreen automatically where the browser allows it (⛶ button or `F` to toggle).
+   Switch between cameras (and between the two angles of a room if it has two photos). The first 30 seconds are
+   quiet so you can learn the rooms (adjustable on the Begin tab).
 3. **Anomalies.** Each one spawns in the room farthest from you and walks the layout graph one room closer
-   at intervals. It likes to move while you are *not* watching that room; if you are watching, it waits a
-   little and then moves anyway, hidden behind a burst of interference.
+   at intervals. Nothing is announced — no “activity detected” messages. **The picture you are looking at never
+   changes:** anomalies only appear, move and leave on feeds you are not watching. To stop you from simply
+   staring at the last room forever, watching one camera for more than ~25 s saturates its sensor: interference
+   climbs, and at 100 % every feed drops for 12 s — and while they are down, things move freely.
 4. **Reporting.** Press **Report**, then tap/click the thing that is wrong. After a short “Transmitting report…”:
    - correct → the anomaly is removed and the room goes back to normal;
    - wrong → the console locks for 6 s and **interference** rises; at 100 % every feed drops for 12 s.
-5. **Losing.** When it reaches your room, the hum stops, there's a few seconds of silence, and then your own
+5. **Interference.** False reports and staring both raise it; it slowly falls again when you switch cameras.
+6. **Losing.** When it reaches your room, the hum stops, there's a few seconds of silence, and then your own
    room appears on the screen with something in it.
-6. **Winning.** Reach 06:00. Each new night has more anomalies at once, faster movement, a larger share of
-   *subtle* changes, a worse picture (lower resolution, more grain and glitches, less colour), vaguer log
-   messages and occasional dropped feeds.
+7. **Winning.** Reach 06:00. Each new night has more anomalies at once, faster movement, a larger share of
+   *subtle* changes, a worse picture (lower resolution, more grain and glitches, less colour), a shorter
+   time before a stared-at camera saturates, and occasional dropped feeds.
 
 ### Where anomalies come from (all three can be mixed)
 | Source | How | Click area |
@@ -70,6 +75,11 @@ each player's own browser, so sharing the URL only shares the empty game.
 | **Procedural fallback** | Canvas effects on your photo: light turned on, shifted/duplicated/mirrored/tilted area, dark figure, sourceless shadow, faint face, wet footprints, person standing, scratch marks | Exact, known from the drawing |
 
 When a room runs out of prepared anomalies (or AI failed), procedural ones are used automatically.
+
+**Export / import.** On the Anomalies tab, *Export house (.zip)* saves your photos, every AI and manual anomaly
+image (as normal `.jpg` files you can open anywhere), the layout and the marked click areas. *Import house*
+loads it again — after a reset, in another browser, or on the other player's phone for co-op — so AI images
+never need to be generated twice. Each image in the library also has a *save* link.
 Anomalies added for **your room** are used as the final image when something reaches you.
 
 **Co-op mode:** one person sets up the anomalies (Mode B) and ticks *Co-op: hide anomaly images* — the library then only shows counts. The other person plays.
@@ -98,7 +108,7 @@ Anomalies added for **your room** are used as the final image when something rea
 - The anomaly is something that *moves through your own floor plan* toward the room you're physically in — the FNAF threat, applied to Exit 8-style spot-the-difference.
 - It prefers to move when you're not watching, and otherwise hides its move behind interference.
 - Wrong reports are punished by lockout + rising interference instead of instant failure (Observation Duty style).
-- Log text is short and clinical, and gets vaguer every night (“Activity detected in KITCHEN.” → “Movement detected.”).
+- The log never says where something is — you only have your eyes and the hum.
 - The hum cutting out is the only warning that something is about to reach you.
 
 **Image models that can edit a photo from a browser app**
@@ -118,13 +128,15 @@ css/style.css         dark CCTV look, mobile/desktop layout
 config.example.js     defaults; copy to config.js (git-ignored) to add an API key
 js/
   storage.js          IndexedDB: image blobs + the house record
+  zip.js              tiny ZIP writer/reader for export/import
+  backup.js           export/import a house (photos + anomalies + layout) as .zip
   imageutil.js        load/resize/encode images, before/after diff → click area
   prompts.js          anomaly prompt library by difficulty, varied fill-ins, helper prompts
   procedural.js       canvas anomalies (11 kinds) + the “intruder” image for losing
   ai.js               Gemini / OpenAI image-edit calls, result normalisation and area detection
   audio.js            Web Audio: hum, room tone, distant thuds/creaks, static, report beeps, silence, scare
   monitor.js          CCTV renderer: low-res tinted frame + grain, rolling bar, flicker, tape glitch, static
-  game.js             night loop: graph distances, spawn/move, reporting, interference, win/lose, difficulty curve
+  game.js             night loop: graph distances, spawn/move (never on screen), reporting, interference, win/lose, difficulty curve
   editor.js           Mode B rectangle editor with “suggest area from difference”
   setup.js            rooms/photos, layout graph, anomaly sources, library, calibration
   demo.js             drawn demo house
@@ -162,5 +174,4 @@ on the view (angle) it is on.
   a voice-memo style guard briefing at the start of each night, binaural panning by room position.
 - **AI pipeline:** a Stable Diffusion inpainting provider with an exact mask, retry when the diff says the
   model redrew too much, generating the “your room” ending image, generating a fresh batch between nights.
-- **Quality of life:** export/import the house as a file (to move it between devices or set up co-op on
-  another phone), a “review the night” screen showing every anomaly you missed, PWA install for offline play.
+- **Quality of life:** a “review the night” screen showing every anomaly you missed, offline play (service worker).

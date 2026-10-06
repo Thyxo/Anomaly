@@ -3,6 +3,7 @@ const App = (() => {
   const $ = id => document.getElementById(id);
   const LS_NIGHT = 'anomaly.night';
   const LS_LENGTH = 'anomaly.length';
+  const LS_GRACE = 'anomaly.grace';
   const emptyHouse = () => ({ rooms: [], edges: [], playerRoom: null, anomalies: [], useFallback: true, coopHide: false, layoutEdited: false });
 
   const app = {
@@ -32,15 +33,19 @@ const App = (() => {
     setNight: n => { try { localStorage.setItem(LS_NIGHT, String(n)); } catch { /* ignore */ } },
     nightLength: () => Number(localStorage.getItem(LS_LENGTH)) || (window.ANOMALY_CONFIG || {}).nightLengthMinutes || 7,
     setNightLength: m => { try { localStorage.setItem(LS_LENGTH, String(m)); } catch { /* ignore */ } },
+    graceSeconds: () => { const v = localStorage.getItem(LS_GRACE); return v === null ? 30 : Math.max(0, Number(v) || 0); },
+    setGraceSeconds: s => { try { localStorage.setItem(LS_GRACE, String(s)); } catch { /* ignore */ } },
 
     async startNight(n = app.night()) {
       const v = Setup.validate();
       if (!v.ok) { app.go('setup'); Setup.showTab('begin'); return; }
       Sound.init(); // must happen inside the click that started the night
+      Game.enterFullscreen(); // likewise
       app.go('game');
       try {
-        await Game.start(app.house, n, app.nightLength(), showEnd);
+        await Game.start(app.house, n, app.nightLength(), showEnd, app.graceSeconds());
       } catch (e) {
+        Game.exitFullscreen();
         app.toast(e.message);
         app.go('title');
       }
@@ -64,6 +69,7 @@ const App = (() => {
   }
 
   function showEnd(r) {
+    Game.exitFullscreen();
     const s = r.stats;
     if (r.won) {
       app.setNight(r.night + 1);

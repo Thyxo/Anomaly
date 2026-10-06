@@ -15,7 +15,7 @@ const Game = (() => {
   function nightParams(n) {
     const k = n - 1;
     return {
-      firstSpawn: Math.max(10, 26 - k * 4),
+      stareLimit: Math.max(15, 25 - k * 3), // seconds on one camera before its sensor saturates
       spawnEvery: Math.max(30, 75 - k * 10),
       moveEvery: Math.max(20, 55 - k * 7),
       maxThreats: Math.min(4, 1 + Math.floor(n / 2)),
@@ -84,7 +84,7 @@ const Game = (() => {
   }
 
   // ---------- setup ----------
-  async function start(house, night, lengthMinutes, onEnd) {
+  async function start(house, night, lengthMinutes, onEnd, graceSeconds = 30) {
     stop();
     const P = nightParams(night);
     const dist = distances(house);
@@ -96,8 +96,10 @@ const Game = (() => {
       lengthMs: lengthMinutes * 60 * 1000,
       elapsed: 0, lastTick: performance.now(), paused: false, over: false,
       camIdx: 0, viewIdx: 0,
-      threats: [], nextSpawn: P.firstSpawn * 1000,
+      // Nothing appears during the grace period, so the rooms can be learned first.
+      threats: [], nextSpawn: (graceSeconds + rand(0, 12)) * 1000,
       stress: 0, lockUntil: 0, offlineUntil: 0, flakyUntil: 0,
+      stareSince: 0, stareWarned: false,
       armed: false, busy: false,
       used: new Set(), stats: { cleared: 0, falseReports: 0, spawned: 0 },
       lastHour: 0, photos: new Map(), anomImgs: new Map(),
@@ -118,7 +120,8 @@ const Game = (() => {
     Monitor.start();
     Sound.startAmbience();
     log(`Shift started. Night ${night}. ${cams.length} feeds online.`);
-    if (night === 1) log('Report anything that was not there before.');
+    const first = G.photos.get(cams[0].photos[0]);
+    if (first && innerHeight > innerWidth && Img.size(first).w > Img.size(first).h) App.toast('Turn your phone sideways for a bigger picture.');
     G.timer = setInterval(tick, 200);
     document.addEventListener('visibilitychange', onVisibility);
   }
@@ -156,6 +159,8 @@ const Game = (() => {
   const currentPhotoId = () => currentRoom().photos[G.viewIdx] || currentRoom().photos[0];
   const threatIn = roomId => G.threats.find(t => t.roomId === roomId);
   const viewing = roomId => currentRoom().id === roomId;
+  // Is this exact picture on screen right now? (Nothing is, while all feeds are down.)
+  const isVisible = (roomId, photoId) => !G.offlineUntil && currentRoom().id === roomId && currentPhotoId() === photoId;
 
   function showView() {
     const room = currentRoom();
@@ -181,6 +186,8 @@ const Game = (() => {
     disarm();
     if (i !== G.camIdx) { G.camIdx = i; G.viewIdx = 0; }
     else if (currentRoom().photos.length > 1) G.viewIdx = (G.viewIdx + 1) % currentRoom().photos.length;
+    G.stareSince = G.elapsed;
+    G.stareWarned = false;
     Sound.staticBurst(0.18, 0.12);
     Monitor.staticFor(200 + Math.random() * 150);
     showView();
@@ -192,6 +199,8 @@ const Game = (() => {
     if (n < 2) return;
     disarm();
     G.viewIdx = (G.viewIdx + 1) % n;
+    G.stareSince = G.elapsed;
+    G.stareWarned = false;
     Sound.staticBurst(0.12, 0.08);
     Monitor.staticFor(150);
     showView();
@@ -211,70 +220,67 @@ const Game = (() => {
   }
 
   // ---------- anomalies ----------
+  // Rule: the picture on screen never changes while you look at it. Things only
+  // appear, move or leave on feeds you are not watching (or while all feeds are down).
+
   // Pick what the threat looks like in a room: a prepared anomaly (AI or manual)
-  // if one is left, otherwise a procedural one drawn on the room's photo.
+  // if one is left, otherwise a procedural one. Returns null if every angle of
+  // the room is on screen right now.
   function manifest(roomId) {
     const room = G.house.rooms.find(r => r.id === roomId);
+    const hidden = room.photos.filter(pid => !isVisible(roomId, pid));
+    if (!hidden.length) return null;
     const diff = weightedDifficulty(G.P.weights);
-    let pool = G.house.anomalies.filter(a => a.roomId === roomId && G.anomImgs.has(a.id) && !G.used.has(a.id));
-    if (!pool.length && G.house.useFallback === false) {
-      pool = G.house.anomalies.filter(a => a.roomId === roomId && G.anomImgs.has(a.id));
-    }
+    const photoOf = a => (a.photoId && room.photos.includes(a.photoId) ? a.photoId : room.photos[0]);
+    const usable = a => a.roomId === roomId && G.anomImgs.has(a.id) && hidden.includes(photoOf(a));
+    let pool = G.house.anomalies.filter(a => usable(a) && !G.used.has(a.id));
+    if (!pool.length && G.house.useFallback === false) pool = G.house.anomalies.filter(usable);
     if (pool.length) {
       const same = pool.filter(a => a.difficulty === diff);
       const a = pick(same.length ? same : pool);
       G.used.add(a.id);
-      const photoId = a.photoId && room.photos.includes(a.photoId) ? a.photoId : room.photos[0];
-      return { photoId, src: G.anomImgs.get(a.id), region: a.region, description: a.description, difficulty: a.difficulty, anomalyId: a.id };
+      return { photoId: photoOf(a), src: G.anomImgs.get(a.id), region: a.region, description: a.description, difficulty: a.difficulty, anomalyId: a.id };
     }
-    const photoId = pick(room.photos);
+    const photoId = pick(hidden);
     const p = Procedural.generate(G.photos.get(photoId), diff);
     return { photoId, src: p.canvas, region: p.region, description: p.description, difficulty: diff, anomalyId: null };
   }
 
-  function announce(room, kind) {
-    const name = room.name.toUpperCase();
-    const n = G.night;
-    if (n === 1) return log(`Activity detected in ${name}.`);
-    if (n === 2) return log(Math.random() < 0.5 ? `Activity detected in ${name}.` : (kind === 'spawn' ? 'Activity detected.' : 'Movement detected.'));
-    if (Math.random() < 0.35) log(kind === 'spawn' ? 'Motion sensor tripped.' : 'Movement detected.');
-  }
+  const shuffle = arr => arr.map(v => [Math.random(), v]).sort((x, y) => x[0] - y[0]).map(x => x[1]);
 
+  // Spawn in the farthest free room that is not on screen.
   function spawn() {
     const free = G.cams.filter(r => !threatIn(r.id));
-    if (!free.length) return false;
-    const maxD = Math.max(...free.map(r => G.dist.get(r.id)));
-    const room = pick(free.filter(r => G.dist.get(r.id) === maxD));
-    const t = {
-      id: Img.uid('t'), roomId: room.id, manif: manifest(room.id),
-      nextMove: G.elapsed + G.P.moveEvery * 1000 * rand(0.95, 1.25), delays: 0, warned: false,
-    };
-    G.threats.push(t);
-    G.stats.spawned++;
-    if (viewing(room.id)) { Monitor.staticFor(380); Sound.staticBurst(0.3, 0.1); showView(); }
-    announce(room, 'spawn');
-    return true;
+    const order = shuffle(free).sort((x, y) => G.dist.get(y.id) - G.dist.get(x.id));
+    for (const room of order) {
+      const manif = manifest(room.id);
+      if (!manif) continue;
+      G.threats.push({
+        id: Img.uid('t'), roomId: room.id, manif,
+        nextMove: G.elapsed + G.P.moveEvery * 1000 * rand(0.95, 1.25), warned: false,
+      });
+      G.stats.spawned++;
+      return true;
+    }
+    return false;
   }
 
   function tryMove(t) {
     const d = G.dist.get(t.roomId);
     if (d <= 1) return enterYourRoom(t);
-    const options = neighbours(G.house, t.roomId).filter(id => G.dist.get(id) === d - 1 && id !== G.house.playerRoom);
-    const free = options.filter(id => !threatIn(id));
-    if (!free.length) { t.nextMove += 5000; return; }
-    const target = pick(free);
-    // Things prefer to move while nobody is watching. After a couple of
-    // postponements they move anyway, hidden behind interference.
-    if ((viewing(t.roomId) || viewing(target)) && t.delays < 2) { t.delays++; t.nextMove += 4000; return; }
-    const seen = viewing(t.roomId) || viewing(target);
-    t.roomId = target;
-    t.manif = manifest(target);
-    t.delays = 0;
-    t.nextMove = G.elapsed + G.P.moveEvery * 1000 * rand(0.85, 1.15);
-    const nd = G.dist.get(target);
-    Sound.thud(0.12 + 0.25 / nd, rand(-0.7, 0.7));
-    if (seen) { Monitor.staticFor(420); Sound.staticBurst(0.35, 0.12); showView(); }
-    announce(G.house.rooms.find(r => r.id === target), 'move');
+    // It will not vanish from a picture you are looking at.
+    if (isVisible(t.roomId, t.manif.photoId)) { t.nextMove += 2000; return; }
+    const options = neighbours(G.house, t.roomId).filter(id => G.dist.get(id) === d - 1 && id !== G.house.playerRoom && !threatIn(id));
+    for (const target of shuffle(options)) {
+      const manif = manifest(target);
+      if (!manif) continue; // you are watching that room; wait
+      t.roomId = target;
+      t.manif = manif;
+      t.nextMove = G.elapsed + G.P.moveEvery * 1000 * rand(0.85, 1.15);
+      Sound.thud(0.12 + 0.25 / G.dist.get(target), rand(-0.7, 0.7));
+      return;
+    }
+    t.nextMove += 2000;
   }
 
   function updateSilence() {
@@ -319,14 +325,25 @@ const Game = (() => {
     if (G.offlineUntil && G.elapsed >= G.offlineUntil) {
       G.offlineUntil = 0;
       G.stress = 40;
+      G.stareSince = G.elapsed;
+      G.stareWarned = false;
       center('');
       log('Feeds restored.');
       showView();
     }
 
-    G.stress = Math.max(0, G.stress - (dt / 1000) * 1.0);
+    // Watching one feed for too long saturates its sensor: interference climbs
+    // until every feed drops, and while they are down things move freely.
+    const staring = !G.offlineUntil && G.elapsed - G.stareSince > G.P.stareLimit * 1000;
+    if (staring) {
+      if (!G.stareWarned) { G.stareWarned = true; log(`CAM ${pad(G.camIdx + 1)}: sensor saturating.`, true); }
+      G.stress += (dt / 1000) * 6;
+      if (G.stress >= 100) feedsDown();
+    } else {
+      G.stress = Math.max(0, G.stress - (dt / 1000) * 1.0);
+    }
+    Monitor.configure({ grain: G.P.monitor.grain + Math.min(100, G.stress) / 100 * 0.3 });
     $('hud-stress').style.width = Math.min(100, G.stress) + '%';
-    $('hud-clock').textContent = clock(G.elapsed, false);
     updateOsd();
   }
 
@@ -334,6 +351,7 @@ const Game = (() => {
   function disarm() {
     if (!G) return;
     G.armed = false;
+    $('hud').classList.remove('armed');
     $('monitor').classList.remove('armed');
     $('btn-report').classList.remove('armed');
   }
@@ -344,6 +362,7 @@ const Game = (() => {
     if (performance.now() < G.lockUntil) { center('CONSOLE LOCKED', 900); Sound.rejected(); return; }
     G.armed = !G.armed;
     $('monitor').classList.toggle('armed', G.armed);
+    $('hud').classList.toggle('armed', G.armed);
     $('btn-report').classList.toggle('armed', G.armed);
     Sound.click();
   }
@@ -443,7 +462,6 @@ const Game = (() => {
     G.over = true;
     clearInterval(G.timer);
     disarm();
-    $('hud-clock').textContent = '06:00';
     log('06:00. Shift complete.');
     center('06:00');
     Sound.stop();
@@ -451,8 +469,27 @@ const Game = (() => {
     setTimeout(() => { Monitor.stop(); onEnd({ won: true, night, stats }); }, 2500);
   }
 
+  // ---------- fullscreen ----------
+  const fsSupported = () => !!(document.fullscreenEnabled || document.webkitFullscreenEnabled);
+  function enterFullscreen() {
+    const el = document.documentElement;
+    const req = el.requestFullscreen || el.webkitRequestFullscreen;
+    if (fsSupported() && req && !document.fullscreenElement) {
+      try { const p = req.call(el); if (p && p.catch) p.catch(() => {}); } catch { /* not allowed here */ }
+    }
+  }
+  function exitFullscreen() {
+    const exit = document.exitFullscreen || document.webkitExitFullscreen;
+    if ((document.fullscreenElement || document.webkitFullscreenElement) && exit) {
+      try { const p = exit.call(document); if (p && p.catch) p.catch(() => {}); } catch { /* ignore */ }
+    }
+  }
+  const toggleFullscreen = () => ((document.fullscreenElement || document.webkitFullscreenElement) ? exitFullscreen() : enterFullscreen());
+
   // ---------- input ----------
   function bindInput() {
+    $('btn-fullscreen').onclick = toggleFullscreen;
+    $('btn-fullscreen').hidden = !fsSupported();
     $('btn-report').onclick = toggleReport;
     $('btn-view').onclick = switchView;
     $('monitor').addEventListener('click', onMonitorClick);
@@ -462,8 +499,9 @@ const Game = (() => {
       else if (e.key === 'r' || e.key === 'R') toggleReport();
       else if (e.key === 'v' || e.key === 'V') switchView();
       else if (e.key === 'Escape') disarm();
+      else if (e.key === 'f' || e.key === 'F') toggleFullscreen();
     });
   }
 
-  return { start, stop, bindInput, distances, nightParams, debugState: () => G };
+  return { start, stop, bindInput, distances, nightParams, enterFullscreen, exitFullscreen, debugState: () => G };
 })();
