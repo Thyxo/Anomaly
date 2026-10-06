@@ -248,10 +248,11 @@ const Game = (() => {
 
   const shuffle = arr => arr.map(v => [Math.random(), v]).sort((x, y) => x[0] - y[0]).map(x => x[1]);
 
-  // Spawn in the farthest free room that is not on screen.
+  // Spawn in a free room that is not on screen: the farthest one by default,
+  // or any camera room with equal chance when the house is set to 'any'.
   function spawn() {
-    const free = G.cams.filter(r => !threatIn(r.id));
-    const order = shuffle(free).sort((x, y) => G.dist.get(y.id) - G.dist.get(x.id));
+    const free = shuffle(G.cams.filter(r => !threatIn(r.id)));
+    const order = G.house.spawnMode === 'any' ? free : free.sort((x, y) => G.dist.get(y.id) - G.dist.get(x.id));
     for (const room of order) {
       const manif = manifest(room.id);
       if (!manif) continue;

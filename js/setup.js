@@ -201,6 +201,7 @@ const Setup = (() => {
       list.appendChild(row);
     }
 
+    $('spawn-any').checked = h.spawnMode === 'any';
     const out = $('layout-paths');
     if (!h.playerRoom) { out.innerHTML = '<span class="warn">Mark your room on the Rooms tab first.</span>'; return; }
     const dist = Game.distances(h);
@@ -424,6 +425,7 @@ const Setup = (() => {
       `YOUR ROOM .... ${yours ? yours.name.toUpperCase() : '—'}`,
       `PREPARED ..... ${h.anomalies.length}  (AI ${by('ai')}, manual ${by('manual')})`,
       `FALLBACK ..... ${h.useFallback !== false ? 'procedural on' : 'off'}`,
+      `STARTS IN .... ${h.spawnMode === 'any' ? 'any room' : 'farthest room'}`,
       `AI ........... ${s.provider === 'none' ? 'off' : s.provider + (s.apiKey ? ' · key set' : ' · no key')}`,
     ];
     $('begin-summary').textContent = lines.join('\n') + (v.problems.length ? '\n\n' + v.problems.map(p => '! ' + p).join('\n') : '');
@@ -438,6 +440,7 @@ const Setup = (() => {
     document.querySelectorAll('#setup-tabs .tab').forEach(t => { t.onclick = () => showTab(t.dataset.tab); });
     $('btn-add-room').onclick = () => addRoom();
     $('btn-chain').onclick = chain;
+    $('spawn-any').onchange = e => { house().spawnMode = e.target.checked ? 'any' : 'far'; App.save(); renderBegin(); };
 
     $('ai-provider').onchange = () => {
       const p = $('ai-provider').value;

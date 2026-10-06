@@ -57,7 +57,7 @@ const Backup = (() => {
     }
     const manifest = {
       format: FORMAT, version: 1, exportedAt: new Date().toISOString(),
-      rooms, edges: house.edges, playerRoom: house.playerRoom, useFallback: house.useFallback !== false, coopHide: !!house.coopHide,
+      rooms, edges: house.edges, playerRoom: house.playerRoom, useFallback: house.useFallback !== false, coopHide: !!house.coopHide, spawnMode: house.spawnMode || 'far',
       anomalies,
     };
     files.unshift({ name: 'manifest.json', data: new TextEncoder().encode(JSON.stringify(manifest, null, 2)) });
@@ -106,7 +106,7 @@ const Backup = (() => {
       rooms,
       edges: (m.edges || []).filter(([a, b]) => ids.has(a) && ids.has(b)),
       playerRoom: ids.has(m.playerRoom) ? m.playerRoom : null,
-      anomalies, useFallback: m.useFallback !== false, coopHide: !!m.coopHide, layoutEdited: true,
+      anomalies, useFallback: m.useFallback !== false, coopHide: !!m.coopHide, spawnMode: m.spawnMode === 'any' ? 'any' : 'far', layoutEdited: true,
     };
   }
 

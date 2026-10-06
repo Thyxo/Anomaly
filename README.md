@@ -52,7 +52,8 @@ each player's own browser, so sharing the URL only shares the empty game.
    overlay on top; it enters fullscreen automatically where the browser allows it (⛶ button or `F` to toggle).
    Switch between cameras (and between the two angles of a room if it has two photos). The first 30 seconds are
    quiet so you can learn the rooms (adjustable on the Begin tab).
-3. **Anomalies.** Each one spawns in the room farthest from you and walks the layout graph one room closer
+3. **Anomalies.** Each one spawns in the room farthest from you (or, if you tick *Anomalies can start in any
+   room* on the Layout tab, in any camera room with equal chance) and walks the layout graph one room closer
    at intervals. Nothing is announced — no “activity detected” messages. **The picture you are looking at never
    changes:** anomalies only appear, move and leave on feeds you are not watching. To stop you from simply
    staring at the last room forever, watching one camera for more than ~25 s saturates its sensor: interference
