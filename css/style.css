@@ -31,8 +31,11 @@ button, input, select { font: inherit; color: inherit; }
 hr { border: 0; border-top: 1px solid var(--line); margin: 24px 0; }
 
 /* ---------- screens ---------- */
-.screen { display: none; min-height: 100%; }
-.screen.active { display: block; }
+/* The page itself never scrolls (no rubber-banding on phones). Each screen is
+   pinned to the viewport and scrolls inside itself only if it must. */
+html, body { overflow: hidden; overscroll-behavior: none; }
+.screen { display: none; }
+.screen.active { display: block; position: fixed; inset: 0; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
 #screen-game.active { display: flex; height: 100%; }
 
 /* ---------- buttons ---------- */
@@ -70,11 +73,11 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 24px 0; }
 .blink { animation: blink 1.4s steps(1) infinite; }
 
 /* ---------- main menu: logo + vertical list on the left, icon buttons top right ---------- */
-#screen-title.active { position: relative; min-height: 100vh; min-height: 100dvh; overflow: hidden;
+#screen-title.active {
   background: radial-gradient(ellipse at 75% 40%, rgba(143,211,164,.05), transparent 60%), var(--bg); }
-#screen-title::before { content: ''; position: absolute; left: -38vh; top: 50%; width: 120vh; height: 120vh; transform: translateY(-50%);
+#screen-title::before { content: ''; position: fixed; left: -38vh; top: 50%; width: 120vh; height: 120vh; transform: translateY(-50%);
   border: 1px solid rgba(143,211,164,.07); border-radius: 50%; pointer-events: none; }
-.menu-left { position: relative; max-width: 560px; padding: 9vh 16px 40px clamp(16px, 8vw, 120px); }
+.menu-left { position: relative; max-width: 560px; padding: 9vh 16px 24px clamp(16px, 8vw, 120px); }
 .menu-left .title { font-size: clamp(52px, 11vw, 92px); }
 .menu-left .subtitle { margin-bottom: 10px; }
 .menu-list { position: relative; display: grid; gap: 6px; margin: 28px 0 12px; padding-left: 0; }

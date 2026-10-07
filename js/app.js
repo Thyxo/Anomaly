@@ -17,7 +17,8 @@ const App = (() => {
       if (name === 'addons') Menu.renderAddons();
       if (name === 'setup') Setup.render();
       if (name === 'game') requestAnimationFrame(() => Monitor.layout());
-      window.scrollTo(0, 0);
+      const scr = $('screen-' + name);
+      if (scr) scr.scrollTop = 0;
     },
 
     save() {
