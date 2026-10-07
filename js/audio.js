@@ -147,6 +147,26 @@ const Sound = (() => {
     o.start(t); o.stop(t + dur + 0.02);
   }
 
+  // The hint that something is in the house: a slow low swell with a faint,
+  // slightly out-of-tune pair of tones under it. Never says where.
+  function presence(vol = 0.5) {
+    if (!ctx) return;
+    const t = ctx.currentTime, dur = 2.6;
+    const s = noiseSource(true);
+    const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.Q.value = 4;
+    f.frequency.setValueAtTime(90, t); f.frequency.linearRampToValueAtTime(420, t + dur * 0.6); f.frequency.linearRampToValueAtTime(120, t + dur);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.5, t + dur * 0.55); g.gain.linearRampToValueAtTime(0, t + dur);
+    s.connect(f); f.connect(g); g.connect(out(vol));
+    s.start(t); s.stop(t + dur + 0.1);
+    for (const fr of [55, 58.3]) {
+      const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.value = fr;
+      const og = ctx.createGain();
+      og.gain.setValueAtTime(0, t); og.gain.linearRampToValueAtTime(0.16, t + dur * 0.5); og.gain.linearRampToValueAtTime(0, t + dur);
+      o.connect(og); og.connect(out(vol)); o.start(t); o.stop(t + dur + 0.1);
+    }
+  }
+
   const accepted = () => { beep(1046, 0.09); beep(784, 0.14, 0.07, 'sine', 0.11); };
   const rejected = () => { beep(110, 0.35, 0.08, 'square'); };
   const click = () => beep(1400, 0.03, 0.04);
@@ -190,5 +210,5 @@ const Sound = (() => {
     started = false;
   }
 
-  return { init, startAmbience, stop, silence, staticBurst, thud, creak, tick, accepted, rejected, click, scare };
+  return { init, startAmbience, stop, silence, staticBurst, thud, creak, tick, presence, beep, accepted, rejected, click, scare };
 })();

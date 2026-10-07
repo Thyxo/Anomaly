@@ -144,7 +144,7 @@ const Demo = (() => {
     }
     const edges = [];
     for (let i = 1; i < rooms.length; i++) edges.push([rooms[i - 1].id, rooms[i].id]);
-    const house = { rooms, edges, playerRoom: rooms[3].id, anomalies: [], useFallback: true, coopHide: false, layoutEdited: true };
+    const house = { rooms, edges, playerRoom: rooms[3].id, anomalies: [], useFallback: true, spawnFar: false, layoutEdited: true };
 
     // One "manual" anomaly so the Mode B path can be seen without uploading anything.
     const kitchen = rooms[1];

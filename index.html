@@ -22,23 +22,95 @@
     <h1 class="title">ANOMALY</h1>
     <p class="subtitle">Residential night watch. Monitor all feeds until 06:00.</p>
     <div class="title-status" id="title-status"></div>
+    <div class="modes" id="mode-cards">
+      <button class="mode-card" data-mode="night">
+        <span class="mode-name">Night shift</span>
+        <span class="mode-desc">Survive until 06:00. Each night is worse than the last.</span>
+        <span class="mode-meta" id="meta-night"></span>
+      </button>
+      <button class="mode-card" data-mode="endless">
+        <span class="mode-name">Endless</span>
+        <span class="mode-desc">One life. The night never ends and keeps getting worse.</span>
+        <span class="mode-meta" id="meta-endless"></span>
+      </button>
+      <button class="mode-card locked" disabled>
+        <span class="mode-name">Challenge</span>
+        <span class="mode-desc">Play a house a friend set up for you.</span>
+        <span class="mode-meta">COMING LATER</span>
+      </button>
+      <button class="mode-card locked" disabled>
+        <span class="mode-name">Co-op</span>
+        <span class="mode-desc">One watches the cameras, one reports. Talk fast.</span>
+        <span class="mode-meta">COMING LATER</span>
+      </button>
+    </div>
     <div class="title-buttons">
-      <button class="btn primary" id="btn-begin">Begin shift</button>
-      <button class="btn" id="btn-setup">Set up house</button>
+      <button class="btn" id="btn-setup">My house</button>
+      <button class="btn" id="btn-addons">Add-ons <span id="addon-count" class="count"></span></button>
       <button class="btn ghost" id="btn-demo">Load demo house</button>
     </div>
     <details class="howto">
       <summary>Duty instructions</summary>
       <ol>
-        <li>Each camera shows a room in your home. Learn what it normally looks like — the first 30 seconds are quiet.</li>
-        <li>Something enters through the farthest room and moves one room closer at a time.</li>
+        <li>Each camera shows a room in your home. Learn what it normally looks like — the start of the shift is quiet.</li>
+        <li>Something enters through one of the rooms and moves one room closer to you at a time.</li>
         <li>When a room looks wrong, press <b>REPORT</b> and mark the wrong thing on the image.</li>
         <li>Nothing changes while you are looking at it. Changes happen on the feeds you are not watching.</li>
+        <li>Listen. Sometimes you can hear that something has arrived.</li>
         <li>False reports, and watching one camera for too long, raise interference. At 100% every feed drops.</li>
-        <li>If it reaches your room, the shift is over. Survive until 06:00.</li>
+        <li>If it reaches your room, the shift is over.</li>
       </ol>
-      <p class="muted">Keys: 1–9 cameras · V switch angle · R report · Esc cancel</p>
+      <p class="muted">Keys: 1–9 cameras · R report · Esc cancel · F fullscreen</p>
     </details>
+  </div>
+</section>
+
+<!-- ============ MODE START ============ -->
+<section id="screen-mode" class="screen">
+  <div class="panel-wrap">
+    <header class="setup-head">
+      <button class="btn ghost small" data-goto="title">‹ Menu</button>
+      <h2 id="mode-title">Night shift</h2>
+      <span></span>
+    </header>
+    <p class="muted" id="mode-desc"></p>
+
+    <div class="mode-opts" id="opts-night">
+      <div class="form-grid">
+        <label>Night <input id="night-select" type="number" min="1" max="10" value="1"></label>
+        <label>Night length (real minutes) <input id="night-length" type="number" min="2" max="20" value="7"></label>
+        <label>Quiet start (seconds) <input id="grace-seconds" type="number" min="0" max="300" value="30"></label>
+      </div>
+    </div>
+
+    <div class="mode-opts" id="opts-endless">
+      <div class="diff-pick" id="endless-diff">
+        <button class="diff" data-diff="1"><b>I</b><span>Uneasy</span><small>Starts like night 1. Gets worse every 3 minutes.</small></button>
+        <button class="diff" data-diff="2"><b>II</b><span>Hostile</span><small>Starts like night 2. Gets worse every 2 minutes.</small></button>
+        <button class="diff" data-diff="3"><b>III</b><span>Nightmare</span><small>Starts like night 3. Gets worse every 90 seconds.</small></button>
+      </div>
+      <div class="form-grid">
+        <label>Quiet start (seconds) <input id="grace-seconds-endless" type="number" min="0" max="300" value="30"></label>
+      </div>
+      <div class="begin-summary" id="endless-best"></div>
+    </div>
+
+    <div class="addon-summary" id="mode-addons"></div>
+    <p class="warn" id="mode-problem"></p>
+    <button class="btn primary big" id="btn-mode-start">Begin</button>
+  </div>
+</section>
+
+<!-- ============ ADD-ONS ============ -->
+<section id="screen-addons" class="screen">
+  <div class="panel-wrap">
+    <header class="setup-head">
+      <button class="btn ghost small" id="addons-back">‹ Back</button>
+      <h2>Add-ons</h2>
+      <span></span>
+    </header>
+    <p class="muted">Add-ons change how a shift plays and work in every mode. Each one gives you something new to decide.</p>
+    <div id="addon-list" class="addon-list"></div>
   </div>
 </section>
 
@@ -53,7 +125,7 @@
     <button class="tab active" data-tab="rooms">1 Rooms</button>
     <button class="tab" data-tab="layout">2 Layout</button>
     <button class="tab" data-tab="anomalies">3 Anomalies</button>
-    <button class="tab" data-tab="begin">4 Begin</button>
+    <button class="tab" data-tab="begin">4 Check</button>
   </nav>
 
   <div class="tab-panel active" id="tab-rooms">
@@ -62,7 +134,7 @@
       They are sent to an AI service <b>only</b> if you press “Calibrate cameras” with AI generation (Mode A) enabled.
       Manual anomaly images (Mode B) and the procedural fallback never leave the device.
     </div>
-    <p class="muted">Add 1–2 photos per room, taken from where a security camera would sit (high corner, wide angle, lights as they are at night). Mark the room you will be sitting in while playing.</p>
+    <p class="muted">Add one photo per room, taken from where a security camera would sit (high corner, wide angle, lights as they are at night). Mark the room you will be sitting in while playing.</p>
     <div class="quick-add" id="quick-add"></div>
     <div id="room-list" class="room-list"></div>
     <button class="btn" id="btn-add-room">+ Add room</button>
@@ -71,7 +143,7 @@
   <div class="tab-panel" id="tab-layout">
     <p class="muted">Which rooms connect directly to each other? The anomaly walks this graph toward your room, one room per step.</p>
     <button class="btn small" id="btn-chain">Auto: chain rooms in list order</button>
-    <label class="check"><input type="checkbox" id="spawn-any"> Anomalies can start in any room (equal chance) — instead of always the room farthest from you</label>
+    <label class="check"><input type="checkbox" id="spawn-far"> Anomalies mostly start far from you. Off (default): every room gets a turn before any room repeats, and never the same room twice in a row.</label>
     <div id="layout-list" class="layout-list"></div>
     <div id="layout-paths" class="layout-paths"></div>
   </div>
@@ -111,7 +183,6 @@
 
     <div class="card">
       <h3>Library</h3>
-      <label class="check"><input type="checkbox" id="coop-hide"> Co-op: hide anomaly images and descriptions (the player should not see these)</label>
       <label class="check"><input type="checkbox" id="use-fallback" checked> Use procedural anomalies when a room runs out of prepared ones</label>
       <div class="room-buttons backup-buttons">
         <button class="btn small" id="btn-export">Export house (.zip)</button>
@@ -126,12 +197,7 @@
 
   <div class="tab-panel" id="tab-begin">
     <div id="begin-summary" class="begin-summary"></div>
-    <div class="form-grid">
-      <label>Start at night <input id="night-select" type="number" min="1" max="10" value="1"></label>
-      <label>Night length (real minutes) <input id="night-length" type="number" min="2" max="20" value="7"></label>
-      <label>Quiet start (seconds before anything appears) <input id="grace-seconds" type="number" min="0" max="300" value="30"></label>
-    </div>
-    <button class="btn primary" id="btn-start-from-setup">Begin shift</button>
+    <button class="btn primary" id="btn-setup-done">Done — back to menu</button>
     <hr>
     <button class="btn danger small" id="btn-reset">Erase all house data</button>
   </div>
@@ -152,6 +218,7 @@
   <div class="monitor-area" id="monitor-area">
     <div class="monitor" id="monitor">
       <canvas id="feed"></canvas>
+      <div class="osd-status" id="osd-status"></div>
       <div class="osd-center" id="osd-center"></div>
       <div class="report-hint" id="report-hint">MARK THE ANOMALY</div>
       <div id="debug-layer"></div>
@@ -165,6 +232,7 @@
     <div class="hud-top">
       <div class="osd"><span class="rec-dot"></span> REC <span id="osd-date"></span></div>
       <div class="hud-right">
+        <span id="hud-addons" class="hud-addons"></span>
         <span id="hud-night" class="osd">NIGHT 1</span>
         <span class="interf osd">INTERFERENCE <span class="meter"><span id="hud-stress"></span></span></span>
         <button class="icon-btn" id="btn-fullscreen" title="Fullscreen" aria-label="Fullscreen">⛶</button>
@@ -172,17 +240,42 @@
     </div>
     <div class="hud-bottom">
       <div class="log" id="log"></div>
-      <div class="osd osd-cam"><span id="osd-cam">CAM 01 - ROOM - 00:00:00</span> <span id="osd-view"></span></div>
+      <div class="osd osd-cam"><span id="osd-cam">CAM 01 - ROOM - 00:00:00</span></div>
       <div class="controls">
         <div class="cams" id="cam-buttons"></div>
         <div class="actions">
-          <button class="btn" id="btn-view">Angle</button>
+          <span id="addon-actions" class="addon-actions"></span>
           <button class="btn report" id="btn-report">Report</button>
         </div>
       </div>
     </div>
   </div>
   <div class="jumpscare" id="jumpscare"><canvas id="js-canvas"></canvas></div>
+</section>
+
+<!-- ============ REVIEW ============ -->
+<section id="screen-review" class="screen">
+  <div class="review">
+    <div class="review-head">
+      <span class="osd-small">SHIFT REVIEW</span>
+      <span id="rv-count"></span>
+      <span id="rv-tag" class="rv-tag"></span>
+    </div>
+    <div class="rv-title" id="rv-title"></div>
+    <div class="rv-stage" id="rv-stage">
+      <canvas id="rv-canvas"></canvas>
+      <div class="rv-ring" id="rv-ring"></div>
+      <div class="rv-label" id="rv-label"></div>
+    </div>
+    <p class="rv-desc" id="rv-desc"></p>
+    <p class="muted small">Tap the picture to see how the room normally looks. Swipe or press Next.</p>
+    <div class="title-buttons">
+      <button class="btn ghost" id="rv-skip">Skip all</button>
+      <span class="spacer"></span>
+      <button class="btn" id="rv-prev">Back</button>
+      <button class="btn primary" id="rv-next">Next</button>
+    </div>
+  </div>
 </section>
 
 <!-- ============ END ============ -->
@@ -192,7 +285,7 @@
     <pre id="end-text"></pre>
     <div class="title-buttons">
       <button class="btn primary" id="btn-end-next"></button>
-      <button class="btn" data-goto="title">Return to console</button>
+      <button class="btn" data-goto="title">Menu</button>
     </div>
   </div>
 </section>
@@ -242,11 +335,15 @@
 <script src="js/ai.js"></script>
 <script src="js/audio.js"></script>
 <script src="js/monitor.js"></script>
+<script src="js/pacing.js"></script>
+<script src="js/addons.js"></script>
 <script src="js/game.js"></script>
+<script src="js/review.js"></script>
 <script src="js/editor.js"></script>
 <script src="js/setup.js"></script>
 <script src="js/demo.js"></script>
 <script src="js/backup.js"></script>
+<script src="js/menu.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>

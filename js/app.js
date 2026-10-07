@@ -1,17 +1,20 @@
-// App shell: screen routing, persisted house data, title and end screens.
+// App shell: screen routing, persisted house data, starting a shift and the end screen.
 const App = (() => {
   const $ = id => document.getElementById(id);
   const LS_NIGHT = 'anomaly.night';
   const LS_LENGTH = 'anomaly.length';
   const LS_GRACE = 'anomaly.grace';
-  const emptyHouse = () => ({ rooms: [], edges: [], playerRoom: null, anomalies: [], useFallback: true, coopHide: false, layoutEdited: false });
+  const ROMAN = { 1: 'I', 2: 'II', 3: 'III' };
+  const emptyHouse = () => ({ rooms: [], edges: [], playerRoom: null, anomalies: [], useFallback: true, spawnFar: false, layoutEdited: false });
 
   const app = {
     house: emptyHouse(),
 
     go(name) {
       document.querySelectorAll('.screen').forEach(s => s.classList.toggle('active', s.id === 'screen-' + name));
-      if (name === 'title') renderTitle();
+      if (name === 'title') Menu.renderTitle();
+      if (name === 'mode') Menu.renderMode();
+      if (name === 'addons') Menu.renderAddons();
       if (name === 'setup') Setup.render();
       if (name === 'game') requestAnimationFrame(() => Monitor.layout());
       window.scrollTo(0, 0);
@@ -36,14 +39,15 @@ const App = (() => {
     graceSeconds: () => { const v = localStorage.getItem(LS_GRACE); return v === null ? 30 : Math.max(0, Number(v) || 0); },
     setGraceSeconds: s => { try { localStorage.setItem(LS_GRACE, String(s)); } catch { /* ignore */ } },
 
-    async startNight(n = app.night()) {
+    // opts: { mode: 'night', night } or { mode: 'endless', difficulty }
+    async startGame(opts) {
       const v = Setup.validate();
       if (!v.ok) { app.go('setup'); Setup.showTab('begin'); return; }
-      Sound.init(); // must happen inside the click that started the night
+      Sound.init(); // must happen inside the click that started the shift
       Game.enterFullscreen(); // likewise
       app.go('game');
       try {
-        await Game.start(app.house, n, app.nightLength(), showEnd, app.graceSeconds());
+        await Game.start(app.house, { ...opts, lengthMinutes: app.nightLength(), graceSeconds: app.graceSeconds() }, onShiftEnd);
       } catch (e) {
         Game.exitFullscreen();
         app.toast(e.message);
@@ -58,32 +62,37 @@ const App = (() => {
     },
   };
 
-  function renderTitle() {
-    const v = Setup.validate(app.house);
-    const status = $('title-status');
-    if (!app.house.rooms.length) status.textContent = 'No house configured.';
-    else if (!v.ok) status.textContent = 'Setup incomplete.\n' + v.problems[0];
-    else status.textContent = `NIGHT ${app.night()} · ${v.cams.length} feed${v.cams.length === 1 ? '' : 's'} ready`;
-    $('btn-begin').disabled = !v.ok;
-    $('btn-begin').textContent = `Begin night ${app.night()}`;
+  // After a shift: review what happened (skippable), then the end screen.
+  function onShiftEnd(r) {
+    Game.exitFullscreen();
+    if (r.mode === 'night' && r.won) app.setNight(r.night + 1);
+    const newBest = r.mode === 'endless' ? Menu.recordEndless(r.difficulty, r.survivedMs, r.clock) : false;
+    Review.show(r.history, () => showEnd(r, newBest));
   }
 
-  function showEnd(r) {
-    Game.exitFullscreen();
+  function showEnd(r, newBest) {
     const s = r.stats;
-    if (r.won) {
-      app.setNight(r.night + 1);
-      $('end-title').textContent = '06:00 — SHIFT COMPLETE';
-      $('end-text').textContent =
-        `Night ${r.night} logged.\nAnomalies cleared .... ${s.cleared}\nFalse reports ....... ${s.falseReports}\n\nNight ${r.night + 1} will be worse.`;
-      $('btn-end-next').textContent = `Begin night ${r.night + 1}`;
-      $('btn-end-next').onclick = () => app.startNight(r.night + 1);
-    } else {
+    const tally = `Anomalies cleared .... ${s.cleared}\nFalse reports ....... ${s.falseReports}`;
+    const next = $('btn-end-next');
+    if (r.mode === 'endless') {
+      const best = Menu.bestFor(r.difficulty);
       $('end-title').textContent = 'SIGNAL LOST';
       $('end-text').textContent =
-        `${r.time} — Contact with guard lost.\nLast known location: ${r.yourRoom.toUpperCase()}.\n\nAnomalies cleared .... ${s.cleared}\nFalse reports ....... ${s.falseReports}`;
-      $('btn-end-next').textContent = `Retry night ${r.night}`;
-      $('btn-end-next').onclick = () => app.startNight(r.night);
+        `Endless ${ROMAN[r.difficulty]} — you lasted until ${r.clock}\n(${Menu.realTime(r.survivedMs)} real time).\n` +
+        (newBest ? 'NEW BEST.\n' : best ? `Best: ${best.clock} (${Menu.realTime(best.ms)}).\n` : '') +
+        `\n${tally}`;
+      next.textContent = 'Try again';
+      next.onclick = () => app.startGame({ mode: 'endless', difficulty: r.difficulty });
+    } else if (r.won) {
+      $('end-title').textContent = '06:00 — SHIFT COMPLETE';
+      $('end-text').textContent = `Night ${r.night} logged.\n${tally}\n\nNight ${r.night + 1} will be worse.`;
+      next.textContent = `Begin night ${r.night + 1}`;
+      next.onclick = () => app.startGame({ mode: 'night', night: r.night + 1 });
+    } else {
+      $('end-title').textContent = 'SIGNAL LOST';
+      $('end-text').textContent = `${r.time} — Contact with guard lost.\nLast known location: ${r.yourRoom.toUpperCase()}.\n\n${tally}`;
+      next.textContent = `Retry night ${r.night}`;
+      next.onclick = () => app.startGame({ mode: 'night', night: r.night });
     }
     app.go('end');
   }
@@ -93,16 +102,17 @@ const App = (() => {
     Game.bindInput();
     Editor.bind();
     Setup.bind();
+    Review.bind();
+    Menu.bind();
     document.querySelectorAll('[data-goto]').forEach(b => { b.onclick = () => app.go(b.dataset.goto); });
     $('btn-setup').onclick = () => app.go('setup');
-    $('btn-begin').onclick = () => app.startNight();
     $('btn-demo').onclick = async () => {
       if (app.house.rooms.length && !confirm('Replace your current house with the demo house?')) return;
       await app.reset();
       app.house = await Demo.build();
       await app.save();
       app.toast('Demo house loaded.');
-      renderTitle();
+      Menu.renderTitle();
     };
     try {
       const saved = await Store.loadHouse();
@@ -110,7 +120,7 @@ const App = (() => {
     } catch (e) {
       app.toast('Local storage is unavailable: ' + e.message);
     }
-    renderTitle();
+    Menu.renderTitle();
   }
 
   document.addEventListener('DOMContentLoaded', init);

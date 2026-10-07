@@ -1,8 +1,8 @@
 # ANOMALY — night watch in your own home
 
 A browser anomaly-horror game. You photograph your own rooms, and the game turns them into security cameras.
-Something comes in through the room farthest from you and moves one room closer at a time.
-Spot what is wrong, report it, and survive until 06:00.
+Something comes in through one of the rooms and moves one room closer to you at a time.
+Spot what is wrong, report it, and survive until 06:00 — or for as long as you can in Endless mode.
 
 > ## ⚠️ Private game — never publish it with a key
 > AI generation (Mode A) calls the image API **directly from the browser**. A key put in `config.js` can be read
@@ -20,8 +20,10 @@ No install or build step. It is plain HTML/CSS/JavaScript.
   (Opening `index.html` straight from disk mostly works in Chrome, but a local server is more reliable.)
 - **Phone:** run the same server on your computer and open `http://<computer-ip>:8000` on the phone (same Wi-Fi).
   “Take photo” opens the camera directly (`<input type="file" capture>`).
-- **Try it without photos:** press **Load demo house** on the title screen (a drawn 4-room house).
+- **Try it without photos:** press **Load demo house** in the main menu (a drawn 4-room house).
 - Debug helpers: add `?debug` to the URL to outline where the current anomaly is, and `?speed=8` to run time faster.
+- Pacing check without a browser: `node tools/simulate.js 4` simulates many 4-minute nights and prints how many
+  anomalies appear per night, how they spread over the rooms and how often a room repeats.
 
 ### Turning on AI anomalies (Mode A)
 1. Copy `config.example.js` to `config.js`.
@@ -46,27 +48,51 @@ each player's own browser, so sharing the URL only shares the empty game.
 
 ## How it plays
 
-1. **Setup.** Add rooms, 1–2 photos each, name them, mark **Your room** (the room you're actually sitting in).
-   On the Layout tab, connect rooms that open into each other (e.g. hallway — living room — your room).
-2. **Night.** 00:00 → 06:00 takes ~7 real minutes (adjustable). The feed fills the whole screen with the camera
-   overlay on top; it enters fullscreen automatically where the browser allows it (⛶ button or `F` to toggle).
-   Switch between cameras (and between the two angles of a room if it has two photos). The first 30 seconds are
-   quiet so you can learn the rooms (adjustable on the Begin tab).
-3. **Anomalies.** Each one spawns in the room farthest from you (or, if you tick *Anomalies can start in any
-   room* on the Layout tab, in any camera room with equal chance) and walks the layout graph one room closer
-   at intervals. Nothing is announced — no “activity detected” messages. **The picture you are looking at never
-   changes:** anomalies only appear, move and leave on feeds you are not watching. To stop you from simply
-   staring at the last room forever, watching one camera for more than ~25 s saturates its sensor: interference
-   climbs, and at 100 % every feed drops for 12 s — and while they are down, things move freely.
-4. **Reporting.** Press **Report**, then tap/click the thing that is wrong. After a short “Transmitting report…”:
+1. **Setup (My house).** Add rooms with one photo each, name them, mark **Your room** (the room you're actually
+   sitting in). On the Layout tab, connect rooms that open into each other (e.g. hallway — living room — your room).
+2. **Main menu.** Pick a game mode: **Night shift** or **Endless** (Challenge and Co-op are planned). Each mode
+   has its own start screen; **Add-ons** can be switched on for any mode.
+3. **Night.** 00:00 → 06:00 takes ~7 real minutes (adjustable on the Night shift screen). The feed fills the whole
+   screen with the camera overlay on top; it enters fullscreen automatically where the browser allows it
+   (⛶ button or `F` to toggle). The start of the shift is quiet (30 s by default) so you can learn the rooms.
+4. **Anomalies.** How many: about 0.75 per real minute on night 1 (≈ 3 in a 4-minute night), +0.5 per minute each
+   night, up to 2–4 at once. Where: every camera room gets a turn before any room repeats, and never the same room
+   twice in a row (tick *Anomalies mostly start far from you* on the Layout tab to favour far rooms instead).
+   Each one walks the layout graph one room closer; the total time from spawn to your door is about the same
+   whatever the distance (≈ 90 s on night 1, less later), so a far room doesn't stall the night and a near room
+   still gives you a chance. Nothing is announced, but *sometimes* you hear a low swell when something arrives,
+   or when something has been in a room for a long time without you seeing it. **The picture you are looking at
+   never changes:** anomalies only appear, move and leave on feeds you are not watching. Watching one camera for
+   more than ~25 s saturates its sensor: interference climbs, and at 100 % every feed drops for 12 s — and while
+   they are down, things move freely.
+5. **Reporting.** Press **Report**, then tap/click the thing that is wrong. After a short “Transmitting report…”:
    - correct → the anomaly is removed and the room goes back to normal;
    - wrong → the console locks for 6 s and **interference** rises; at 100 % every feed drops for 12 s.
-5. **Interference.** False reports and staring both raise it; it slowly falls again when you switch cameras.
-6. **Losing.** When it reaches your room, the hum stops, there's a few seconds of silence, and then your own
+6. **Interference.** False reports and staring both raise it; it slowly falls again when you switch cameras.
+7. **Losing.** When it reaches your room, the hum stops, there's a few seconds of silence, and then your own
    room appears on the screen with something in it.
-7. **Winning.** Reach 06:00. Each new night has more anomalies at once, faster movement, a larger share of
+8. **Winning.** Reach 06:00. Each new night has more anomalies, faster approach, a larger share of
    *subtle* changes, a worse picture (lower resolution, more grain and glitches, less colour), a shorter
    time before a stared-at camera saturates, and occasional dropped feeds.
+9. **Shift review.** After every shift, one card per anomaly that actually appeared — *found*, *missed*, or the
+   one that *got you* — with a ring around it. Tap the picture to compare with the normal room; swipe or *Next*
+   to move on; *Skip all* leaves at once. Anomalies that never appeared are never shown.
+
+### Endless
+One life and no 06:00: the clock keeps running and the shift slowly gets worse. Difficulty **I** starts like
+night 1 and gets worse every 3 minutes, **II** starts like night 2 (every 2 minutes), **III** like night 3
+(every 90 seconds). Your best time per difficulty is kept on the device.
+
+### Add-ons
+Optional rules for any mode, switched on in the main menu. Each one must give the player a new decision.
+| Add-on | What it does |
+|---|---|
+| **Dead cameras** | Now and then a camera loses its signal. Hold *Reboot* (or `B`) for 3 s on that camera to fix it. While it is down you are blind there — and things can still appear and move in that room. |
+| **Battery** | Every camera switch costs 2.5 % power; power returns at 0.35 %/s. At 0 % every feed goes dark for 10 s, then the generator restarts at 30 %. Switching often keeps sensors cool but drains you. |
+| **Camera filters** | Night vision, worn VHS tape or thermal (fixed, or random each shift). |
+
+New add-ons live in `js/addons.js` and hook into the shift at fixed points (start, tick, camera switch,
+"is this feed dead?", stop).
 
 ### Where anomalies come from (all three can be mixed)
 | Source | How | Click area |
@@ -80,10 +106,12 @@ When a room runs out of prepared anomalies (or AI failed), procedural ones are u
 **Export / import.** On the Anomalies tab, *Export house (.zip)* saves your photos, every AI and manual anomaly
 image (as normal `.jpg` files you can open anywhere), the layout and the marked click areas. *Import house*
 loads it again — after a reset, in another browser, or on the other player's phone for co-op — so AI images
-never need to be generated twice. Each image in the library also has a *save* link.
+never need to be generated twice. The library is hidden by default (seeing your own anomalies spoils the game); *Show anomalies (spoilers)* opens it,
+and each image then has a *save* link.
 Anomalies added for **your room** are used as the final image when something reaches you.
 
-**Co-op mode:** one person sets up the anomalies (Mode B) and ticks *Co-op: hide anomaly images* — the library then only shows counts. The other person plays.
+**Co-op (for now):** one person sets up the anomalies (Mode B) and hands the device over — the library only shows
+counts unless someone presses *Show anomalies*. A proper online Co-op mode is planned (see `PLAN.md`).
 
 ---
 
@@ -124,7 +152,7 @@ Anomalies added for **your room** are used as the final image when something rea
 No framework or bundler; classic `<script>` files sharing a few global modules, so it also runs from disk.
 
 ```
-index.html            all screens: title, setup (4 tabs), calibration, game, end, editor modal
+index.html            all screens: main menu, mode start, add-ons, setup (4 tabs), calibration, game, review, end, editor modal
 css/style.css         dark CCTV look, mobile/desktop layout
 config.example.js     defaults; copy to config.js (git-ignored) to add an API key
 js/
@@ -137,28 +165,34 @@ js/
   ai.js               Gemini / OpenAI image-edit calls, result normalisation and area detection
   audio.js            Web Audio: hum, room tone, distant thuds/creaks, static, report beeps, silence, scare
   monitor.js          CCTV renderer: low-res tinted frame + grain, rolling bar, flicker, tape glitch, static
-  game.js             night loop: graph distances, spawn/move (never on screen), reporting, interference, win/lose, difficulty curve
+  pacing.js           difficulty curve, anomalies per minute, approach time, fair spawn-room picker (no DOM)
+  addons.js           add-on registry: dead cameras, battery, camera filters
+  game.js             shift loop: graph distances, spawn/move (never on screen), sound hints, reporting,
+                      interference, add-on hooks, night/endless endings, history for the review
+  review.js           after-shift review cards (found / missed / got you)
+  menu.js             main menu, mode start screens, add-ons screen, endless best times
   editor.js           Mode B rectangle editor with “suggest area from difference”
   setup.js            rooms/photos, layout graph, anomaly sources, library, calibration
   demo.js             drawn demo house
-  app.js              screen routing, persistence, title/end screens
+  app.js              screen routing, persistence, starting a shift, end screen
+tools/
+  simulate.js         node pacing simulation (uses js/pacing.js)
 ```
 
 **Data model** (stored in IndexedDB)
 ```js
 house = {
-  rooms:     [{ id, name, photos: [imageId, imageId?] }],
+  rooms:     [{ id, name, photos: [imageId] }],     // one camera per room (only the first photo is used)
   edges:     [[roomIdA, roomIdB], ...],          // undirected layout graph
   playerRoom: roomId,
   anomalies: [{ id, source: 'ai'|'manual', roomId, photoId, imageId,
                 difficulty: 1..4, description, region: {x,y,w,h} /* 0..1 */ }],
-  useFallback, coopHide
+  useFallback, spawnFar
 }
 ```
 At night start every image is preloaded. A *threat* is a moving entity; whenever it enters a room it
 *manifests* as one unused prepared anomaly for that room (preferring the difficulty the night asks for),
-or a procedural one. A report is correct when the tap lands inside that manifestation's `region` (+3.5 % margin)
-on the view (angle) it is on.
+or a procedural one. A report is correct when the tap lands inside that manifestation's `region` (+3.5 % margin).
 
 ---
 
@@ -166,13 +200,14 @@ on the view (angle) it is on.
 
 - **More anomaly types:** time-based ones (a door that slowly opens over a minute), animated figures that
   are only there for a few frames, “camera malfunction” anomalies, audio-only anomalies (a voice on one feed),
-  anomalies that differ between the two angles of a room, night-vision-only anomalies.
+  night-vision-only anomalies.
 - **Reporting depth:** Observation-Duty-style report categories (object moved / extra object / intruder / light),
   a limited number of reports per hour, a penalty for anomalies left too long.
-- **Difficulty curve:** tune from playtests; add a night 6+ “endless” mode; per-anomaly speed (severe ones move faster);
+- **Difficulty curve:** tune from playtests; per-anomaly speed (severe ones move faster);
   more than one route through the house; doors you can “lock” for a while at a cost.
 - **Audio:** footsteps that get louder as it approaches, room-specific sounds (fridge hum in the kitchen),
   a voice-memo style guard briefing at the start of each night, binaural panning by room position.
 - **AI pipeline:** a Stable Diffusion inpainting provider with an exact mask, retry when the diff says the
   model redrew too much, generating the “your room” ending image, generating a fresh batch between nights.
-- **Quality of life:** a “review the night” screen showing every anomaly you missed, offline play (service worker).
+- **Quality of life:** offline play (service worker).
+- **Planned modes:** sharing a house by link, Challenge and online Co-op — see `PLAN.md`.

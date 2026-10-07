@@ -6,7 +6,22 @@ const Monitor = (() => {
   let noise = [];              // pre-generated grain frames
   let raf = 0, last = 0;
   let staticUntil = 0, offline = false;
-  const fx = { grain: 0.12, glitch: 0.01, flicker: 0.05, color: 0.2, resolution: 640 };
+  const fx = { grain: 0.12, glitch: 0.01, flicker: 0.05, color: 0.2, resolution: 640, filter: 'none' };
+
+  // Thermal palette: cold black/blue through purple and red to hot yellow-white.
+  const THERMAL = (() => {
+    const stops = [[0, [4, 4, 20]], [0.25, [42, 10, 107]], [0.45, [160, 18, 122]], [0.65, [240, 80, 42]], [0.82, [255, 194, 58]], [1, [255, 255, 224]]];
+    const lut = new Uint8ClampedArray(256 * 3);
+    for (let i = 0; i < 256; i++) {
+      const v = i / 255;
+      let j = 0;
+      while (j < stops.length - 2 && v > stops[j + 1][0]) j++;
+      const [a, ca] = stops[j], [b, cb] = stops[j + 1];
+      const t = Math.min(1, Math.max(0, (v - a) / (b - a)));
+      for (let c = 0; c < 3; c++) lut[i * 3 + c] = ca[c] + (cb[c] - ca[c]) * t;
+    }
+    return lut;
+  })();
 
   function init(canvasEl, boxEl, areaEl) {
     canvas = canvasEl; box = boxEl; area = areaEl;
@@ -38,25 +53,45 @@ const Monitor = (() => {
     }
   }
 
-  // Turn any image/canvas into the green-grey CCTV frame.
+  // Turn any image/canvas into the CCTV frame. The default is green-grey; the
+  // camera-filter add-on switches to night vision, VHS tape or thermal.
   function process(src) {
     const s = Img.size(src);
-    const W = Math.min(fx.resolution, s.w);
+    const W = Math.min(fx.resolution, s.w, fx.filter === 'vhs' ? 352 : Infinity);
     const H = Math.round(W * s.h / s.w);
     const c = document.createElement('canvas');
     c.width = W; c.height = H;
     const g = c.getContext('2d');
+    if (fx.filter === 'thermal' && 'filter' in g) g.filter = 'blur(1.5px)';
     g.drawImage(src, 0, 0, W, H);
+    g.filter = 'none';
     const id = g.getImageData(0, 0, W, H);
     const d = id.data, mix = fx.color;
+    const src0 = fx.filter === 'vhs' ? new Uint8ClampedArray(d) : null;
     for (let i = 0; i < d.length; i += 4) {
       const r = d[i], gr = d[i + 1], b = d[i + 2];
       let l = 0.3 * r + 0.59 * gr + 0.11 * b;
-      l = (l - 128) * 1.12 + 120;                  // a little contrast, slightly darker
-      const tr = l * 0.84 + 6, tg = l * 0.98 + 12, tb = l * 0.88 + 8;
-      d[i] = tr * (1 - mix) + r * mix;
-      d[i + 1] = tg * (1 - mix) + gr * mix;
-      d[i + 2] = tb * (1 - mix) + b * mix;
+      if (fx.filter === 'nightvision') {
+        l = Math.min(255, l * 1.45 + 16);
+        d[i] = l * 0.28; d[i + 1] = l; d[i + 2] = l * 0.34;
+      } else if (fx.filter === 'thermal') {
+        const k = Math.max(0, Math.min(255, (l - 20) * 1.25)) | 0;
+        d[i] = THERMAL[k * 3]; d[i + 1] = THERMAL[k * 3 + 1]; d[i + 2] = THERMAL[k * 3 + 2];
+      } else if (fx.filter === 'vhs') {
+        // washed-out colour with red and blue bleeding sideways
+        const x = (i / 4) % W;
+        const rI = i + (x + 3 < W ? 12 : 0), bI = i - (x - 3 >= 0 ? 12 : 0);
+        const lr = src0[rI], lb = src0[bI + 2];
+        d[i] = Math.min(255, (lr * 0.6 + l * 0.4) * 0.92 + 18);
+        d[i + 1] = (gr * 0.55 + l * 0.45) * 0.9 + 10;
+        d[i + 2] = (lb * 0.6 + l * 0.4) * 0.85 + 14;
+      } else {
+        l = (l - 128) * 1.12 + 120;                  // a little contrast, slightly darker
+        const tr = l * 0.84 + 6, tg = l * 0.98 + 12, tb = l * 0.88 + 8;
+        d[i] = tr * (1 - mix) + r * mix;
+        d[i + 1] = tg * (1 - mix) + gr * mix;
+        d[i + 2] = tb * (1 - mix) + b * mix;
+      }
     }
     g.putImageData(id, 0, 0);
     return c;
@@ -132,10 +167,18 @@ const Monitor = (() => {
 
     if (n) {
       ctx.globalCompositeOperation = 'overlay';
-      ctx.globalAlpha = fx.grain;
+      ctx.globalAlpha = Math.min(0.75, fx.grain * (fx.filter === 'nightvision' ? 1.8 : 1));
       ctx.drawImage(n, 0, 0);
       ctx.globalAlpha = 1;
       ctx.globalCompositeOperation = 'source-over';
+    }
+
+    // VHS: a ragged tracking band near the bottom of the tape
+    if (fx.filter === 'vhs' && n) {
+      const th = H * 0.05, ty = H - th - (Math.sin(now / 900) + 1) * H * 0.02;
+      ctx.globalAlpha = 0.55;
+      ctx.drawImage(n, 0, ty, W, th, (Math.random() - 0.5) * 12, ty, W, th);
+      ctx.globalAlpha = 1;
     }
 
     if (Math.random() < 0.3) {

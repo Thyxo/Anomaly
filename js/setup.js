@@ -63,7 +63,7 @@ const Setup = (() => {
 
   async function addPhotos(room, files) {
     for (const f of files) {
-      if (room.photos.length >= 2) { App.toast('Two photos per room is the maximum.'); break; }
+      if (room.photos.length >= 1) { App.toast('One photo per room — remove the old one first.'); break; }
       try {
         const blob = await Img.normalizeUpload(f);
         room.photos.push(await Img.save(blob, 'photo'));
@@ -145,9 +145,9 @@ const Setup = (() => {
 
       const photos = el('div', 'room-photos');
       card.appendChild(photos);
-      room.photos.forEach((pid, i) => thumb(pid, `Photo ${i + 1}`, () => removePhoto(room, pid)).then(t => photos.appendChild(t)));
+      room.photos.forEach((pid, i) => thumb(pid, i ? 'Not used (one camera per room)' : 'Camera', () => removePhoto(room, pid)).then(t => photos.appendChild(t)));
 
-      if (room.photos.length < 2) {
+      if (!room.photos.length) {
         const btns = el('div', 'room-buttons');
         btns.append(fileButton('Take photo', true, f => addPhotos(room, f)), fileButton('Choose file', false, f => addPhotos(room, f)));
         card.appendChild(btns);
@@ -201,7 +201,7 @@ const Setup = (() => {
       list.appendChild(row);
     }
 
-    $('spawn-any').checked = h.spawnMode === 'any';
+    $('spawn-far').checked = !!h.spawnFar;
     const out = $('layout-paths');
     if (!h.playerRoom) { out.innerHTML = '<span class="warn">Mark your room on the Rooms tab first.</span>'; return; }
     const dist = Game.distances(h);
@@ -266,22 +266,32 @@ const Setup = (() => {
     App.toast('Prompt copied.');
   }
 
+  // The library is hidden by default: seeing your own anomalies spoils the game.
   let libraryRender = 0;
+  let revealLibrary = false;
   async function renderLibrary() {
     const token = ++libraryRender;
     const h = house();
     const lib = $('library');
     lib.innerHTML = '';
-    $('coop-hide').checked = !!h.coopHide;
     $('use-fallback').checked = h.useFallback !== false;
     if (!h.anomalies.length) { lib.appendChild(el('p', 'muted small', 'No prepared anomalies yet. Procedural ones will be used.')); return; }
     const roomName = id => (h.rooms.find(r => r.id === id) || { name: '?' }).name;
-    if (h.coopHide) {
+    const toggle = el('button', 'btn small', revealLibrary ? 'Hide anomalies again' : 'Show anomalies (spoilers)');
+    toggle.onclick = () => { revealLibrary = !revealLibrary; renderLibrary(); };
+    if (!revealLibrary) {
       const counts = {};
       h.anomalies.forEach(a => { counts[roomName(a.roomId)] = (counts[roomName(a.roomId)] || 0) + 1; });
-      lib.appendChild(el('p', 'muted', 'Hidden for co-op. ' + Object.entries(counts).map(([k, v]) => `${k}: ${v}`).join(' · ')));
+      const box = el('div', 'lib-hidden');
+      box.appendChild(el('p', 'begin-summary', `${h.anomalies.length} anomal${h.anomalies.length === 1 ? 'y' : 'ies'} ready`));
+      box.appendChild(el('p', 'muted small', Object.entries(counts).map(([k, v]) => `${k}: ${v}`).join(' · ')));
+      box.appendChild(toggle);
+      lib.appendChild(box);
       return;
     }
+    const bar = el('div', 'lib-bar');
+    bar.appendChild(toggle);
+    lib.appendChild(bar);
     for (const a of h.anomalies) {
       const item = el('div', 'lib-item');
       const t = await thumb(a.imageId, a.description);
@@ -383,7 +393,7 @@ const Setup = (() => {
         n++;
         const label = `CAM ${String(ri + 1).padStart(2, '0')} ${room.name.toUpperCase()} [${n}/${total}]`;
         if (authFailures >= 2) { say(`${label} skipped.`); continue; }
-        const photoId = room.photos[i % room.photos.length];
+        const photoId = room.photos[0];
         try {
           const photoBlob = await Store.getImage(photoId);
           const photoImg = await Img.get(photoId);
@@ -425,14 +435,11 @@ const Setup = (() => {
       `YOUR ROOM .... ${yours ? yours.name.toUpperCase() : '—'}`,
       `PREPARED ..... ${h.anomalies.length}  (AI ${by('ai')}, manual ${by('manual')})`,
       `FALLBACK ..... ${h.useFallback !== false ? 'procedural on' : 'off'}`,
-      `STARTS IN .... ${h.spawnMode === 'any' ? 'any room' : 'farthest room'}`,
+      `STARTS IN .... ${h.spawnFar ? 'mostly far rooms' : 'every room in turn'}`,
       `AI ........... ${s.provider === 'none' ? 'off' : s.provider + (s.apiKey ? ' · key set' : ' · no key')}`,
     ];
     $('begin-summary').textContent = lines.join('\n') + (v.problems.length ? '\n\n' + v.problems.map(p => '! ' + p).join('\n') : '');
-    $('btn-start-from-setup').disabled = !v.ok;
-    $('night-select').value = App.night();
-    $('night-length').value = App.nightLength();
-    $('grace-seconds').value = App.graceSeconds();
+    $('btn-setup-done').textContent = v.ok ? 'Done — back to menu' : 'Back to menu';
   }
 
   // ---------- wiring ----------
@@ -440,7 +447,7 @@ const Setup = (() => {
     document.querySelectorAll('#setup-tabs .tab').forEach(t => { t.onclick = () => showTab(t.dataset.tab); });
     $('btn-add-room').onclick = () => addRoom();
     $('btn-chain').onclick = chain;
-    $('spawn-any').onchange = e => { house().spawnMode = e.target.checked ? 'any' : 'far'; App.save(); renderBegin(); };
+    $('spawn-far').onchange = e => { house().spawnFar = e.target.checked; App.save(); renderBegin(); };
 
     $('ai-provider').onchange = () => {
       const p = $('ai-provider').value;
@@ -455,12 +462,7 @@ const Setup = (() => {
     $('btn-calib-done').onclick = () => { App.go('setup'); showTab('anomalies'); };
 
     $('manual-file').onchange = e => { const f = [...e.target.files]; e.target.value = ''; uploadManual(f); };
-    $('coop-hide').onchange = e => { house().coopHide = e.target.checked; App.save(); renderLibrary(); };
     $('use-fallback').onchange = e => { house().useFallback = e.target.checked; App.save(); renderBegin(); };
-
-    $('night-select').onchange = e => App.setNight(Math.max(1, Number(e.target.value) || 1));
-    $('night-length').onchange = e => App.setNightLength(Math.max(2, Math.min(20, Number(e.target.value) || 7)));
-    $('grace-seconds').onchange = e => App.setGraceSeconds(Math.max(0, Math.min(300, Number(e.target.value) || 0)));
 
     $('btn-export').onclick = async () => {
       const h = house();
@@ -486,7 +488,7 @@ const Setup = (() => {
         render();
       } catch (err) { App.toast('Import failed: ' + err.message); }
     };
-    $('btn-start-from-setup').onclick = () => App.startNight();
+    $('btn-setup-done').onclick = () => App.go('title');
     $('btn-reset').onclick = async () => {
       if (!confirm('Erase all rooms, photos and anomalies from this browser?')) return;
       await App.reset();

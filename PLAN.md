@@ -1,17 +1,19 @@
 # Plan for næste version
 
-Status: kun plan, ingen kode endnu. Skrevet på dansk, fordi det er et arbejdsdokument.
+Skrevet på dansk, fordi det er et arbejdsdokument.
+
+Status: fase 0, 1, 2 og 5 er bygget. Fase 3 og 4 (Railway) venter, til du er med på det.
 
 ## Faser
 
-| Fase | Indhold | Backend |
-|---|---|---|
-| 0 | Spawn-logik og tempo (se nedenfor) | Nej |
-| 1 | Lydhints, gennemgang efter natten, fjern angle-knap, skjult bibliotek | Nej |
-| 2 | Hovedmenu med gamemodes, addon-system, Endeløs, kamera der dør | Nej |
-| 3 | Del hus (krypteret link) og Udfordring | Ja, lille (Railway) |
-| 4 | Co-op med roller og timer | Ja (Railway) |
-| 5 | Flere addons: batteri, kamerafiltre m.m. | Nej |
+| Fase | Indhold | Backend | Status |
+|---|---|---|---|
+| 0 | Spawn-logik og tempo (se nedenfor) | Nej | Færdig |
+| 1 | Lydhints, gennemgang efter natten, fjern angle-knap, skjult bibliotek | Nej | Færdig |
+| 2 | Hovedmenu med gamemodes, addon-system, Endeløs, kamera der dør | Nej | Færdig |
+| 3 | Del hus (krypteret link) og Udfordring | Ja, lille (Railway) | Venter |
+| 4 | Co-op med roller og timer | Ja (Railway) | Venter |
+| 5 | Flere addons: batteri, kamerafiltre m.m. | Nej | Batteri og filtre færdige |
 
 ## Fase 0: Spawn-logik og tempo
 
@@ -112,7 +114,7 @@ Status: kun plan, ingen kode endnu. Skrevet på dansk, fordi det er et arbejdsdo
 
 ### Deling
 1. Zip-eksport (findes).
-2. **Delingslink (anbefalet):** huset krypteres i browseren før upload. Nøglen ligger i linket efter `#` og sendes aldrig til serveren. Linket udløber (fx 7 dage).
+2. **Delingslink (anbefalet):** huset krypteres i browseren før upload. Nøglen ligger i linket efter `#` og sendes aldrig til serveren. Linket udløber efter 3 dage.
 3. QR-kode til mobil.
 - Ærlig begrænsning: spillet skal dekryptere for at spille. Det skjuler billederne for almindelige spillere, men er ikke kopibeskyttelse.
 - Privatliv: dine rumbilleder forlader din enhed ved deling. Skal kræve et aktivt ja.
@@ -135,9 +137,21 @@ Status: kun plan, ingen kode endnu. Skrevet på dansk, fordi det er et arbejdsdo
 ## Fase 5: Flere addons
 Batteri, kamerafiltre og andre ideer, bygget på addon-systemet.
 
-## Åbne spørgsmål
-1. Endeløs: ét liv eller tre chancer?
-2. Gennemgang: skal fundne anomalier også vises? (Antaget ja.)
-3. Delingslink: er 7 dages udløb fint?
-4. Co-op: er ekstern stemme i orden i første version?
-5. Tempo (fase 0): besvaret. Nat 1 ca. 3 på 4 minutter, ca. 0,75 pr. minut. Nat 2+ er foreslået og kan justeres efter test.
+## Beslutninger
+1. Endeløs: ét liv, og man vælger selv sværhedsgrad 1-3.
+2. Gennemgang: fundne, missede og den der dræbte dig vises. Aldrig anomalier, der ikke kom frem.
+3. Delingslink: 3 dages udløb.
+4. Co-op: ekstern stemme (fx Discord) i første version.
+5. Tempo: nat 1 ca. 3 på 4 minutter (ca. 0,75 pr. minut), +0,5 pr. minut pr. nat.
+6. Railway: venter, til du kan være med.
+
+## Sådan blev det bygget (fase 0, 1, 2, 5)
+- **Tempo** (`js/pacing.js`): antal pr. minut, samlet tilnærmelsestid (90 s på nat 1, derefter kortere), 2-4 samtidige. Rum vælges fra en "pose", så alle rum får en tur, og aldrig samme rum to gange i træk. "Mostly far" er et flueben på Layout-fanen. `node tools/simulate.js 4` viser tallene.
+- **Lydhints**: 35 % chance ved spawn, og 60 % chance når noget har stået 55-85 s uden at blive set. Højst én hver 20. sekund. Lyden siger ikke hvor.
+- **Gennemgang** (`js/review.js`): kort for hver anomali, der kom frem. Tryk = før/efter, swipe/Næste, "Skip all".
+- **Angle-knap** fjernet. Ét foto pr. rum. Ekstra fotos fra før vises som "not used".
+- **Skjult bibliotek**: viser kun antal, indtil man trykker "Show anomalies (spoilers)". Co-op-fluebenet er fjernet.
+- **Hovedmenu** (`js/menu.js`): kort for Night shift, Endless, Challenge og Co-op (de to sidste nedtonet). Hver mode har sin egen startskærm.
+- **Endeløs**: ét liv. I/II/III starter som nat 1/2/3 og bliver værre hvert 3./2./1,5. minut. Bedste tid gemmes pr. sværhedsgrad.
+- **Addons** (`js/addons.js`): Dead cameras (hold Reboot eller B i 3 s), Battery (2,5 % pr. skift, lades langsomt op, strømsvigt ved 0), Camera filters (nattesyn, VHS, termisk, eller tilfældigt).
+- Vibration ved jumpscare på mobil.
