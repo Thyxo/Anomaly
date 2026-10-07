@@ -106,6 +106,7 @@ const App = (() => {
     Menu.bind();
     document.querySelectorAll('[data-goto]').forEach(b => { b.onclick = () => app.go(b.dataset.goto); });
     $('btn-setup').onclick = () => app.go('setup');
+    $('btn-rotate').onclick = () => Game.enterFullscreen();
     $('btn-demo').onclick = async () => {
       if (app.house.rooms.length && !confirm('Replace your current house with the demo house?')) return;
       await app.reset();

@@ -116,8 +116,6 @@ const Game = (() => {
     showView();
     Monitor.start();
     Sound.startAmbience();
-    const first = G.photos.get(camPhoto(cams[0]));
-    if (first && innerHeight > innerWidth && Img.size(first).w > Img.size(first).h) App.toast('Turn your phone sideways for a bigger picture.');
     G.timer = setInterval(tick, 200);
     document.addEventListener('visibilitychange', onVisibility);
   }
@@ -540,8 +538,13 @@ const Game = (() => {
     const el = document.documentElement;
     const req = el.requestFullscreen || el.webkitRequestFullscreen;
     if (fsSupported() && req && !document.fullscreenElement) {
-      try { const p = req.call(el); if (p && p.catch) p.catch(() => {}); } catch { /* not allowed here */ }
-    }
+      try { const p = req.call(el); if (p && p.then) p.then(lockLandscape, () => {}); } catch { /* not allowed here */ }
+    } else lockLandscape();
+  }
+  // Only works in fullscreen on some phones (mostly Android); elsewhere the
+  // portrait overlay asks the player to turn the phone.
+  function lockLandscape() {
+    try { const o = screen.orientation; if (o && o.lock) o.lock('landscape').catch(() => {}); } catch { /* unsupported */ }
   }
   function exitFullscreen() {
     const exit = document.exitFullscreen || document.webkitExitFullscreen;

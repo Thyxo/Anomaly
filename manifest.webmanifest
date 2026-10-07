@@ -3,7 +3,7 @@
   "short_name": "Anomaly",
   "start_url": "./index.html",
   "display": "fullscreen",
-  "orientation": "any",
+  "orientation": "landscape",
   "background_color": "#050706",
   "theme_color": "#050706"
 }
