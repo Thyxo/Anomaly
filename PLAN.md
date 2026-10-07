@@ -142,7 +142,7 @@ Batteri, kamerafiltre og andre ideer, bygget på addon-systemet.
 2. Gennemgang: fundne, missede og den der dræbte dig vises. Aldrig anomalier, der ikke kom frem.
 3. Delingslink: 3 dages udløb.
 4. Co-op: ekstern stemme (fx Discord) i første version.
-5. Tempo: nat 1 ca. 3 på 4 minutter (ca. 0,75 pr. minut), +0,5 pr. minut pr. nat.
+5. Tempo: nat 1 ca. 6 på 4 minutter (ca. 1,5 pr. minut, ændret efter test), +0,5 pr. minut pr. nat.
 6. Railway: venter, til du kan være med.
 
 ## Sådan blev det bygget (fase 0, 1, 2, 5)

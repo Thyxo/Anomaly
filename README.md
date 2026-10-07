@@ -55,7 +55,7 @@ each player's own browser, so sharing the URL only shares the empty game.
 3. **Night.** 00:00 → 06:00 takes ~7 real minutes (adjustable on the Night shift screen). The feed fills the whole
    screen with the camera overlay on top; it enters fullscreen automatically where the browser allows it
    (⛶ button or `F` to toggle). The start of the shift is quiet (30 s by default) so you can learn the rooms.
-4. **Anomalies.** How many: about 0.75 per real minute on night 1 (≈ 3 in a 4-minute night), +0.5 per minute each
+4. **Anomalies.** How many: about 1.5 per real minute on night 1 (≈ 6 in a 4-minute night), +0.5 per minute each
    night, up to 2–4 at once. Where: every camera room gets a turn before any room repeats, and never the same room
    twice in a row (tick *Anomalies mostly start far from you* on the Layout tab to favour far rooms instead).
    Each one walks the layout graph one room closer; the total time from spawn to your door is about the same

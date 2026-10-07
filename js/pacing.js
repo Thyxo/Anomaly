@@ -5,7 +5,7 @@ const Pacing = (() => {
   function params(n) {
     const k = Math.max(0, n - 1);
     return {
-      rate: Math.min(3.5, 0.75 + k * 0.5),        // anomalies per real minute
+      rate: Math.min(4, 1.5 + k * 0.5),        // anomalies per real minute
       approach: Math.max(40, 90 - k * 12),         // seconds from spawn to your door, whatever the distance
       maxThreats: Math.min(4, 1 + Math.ceil(n / 2)),
       stareLimit: Math.max(15, 25 - k * 3),        // seconds on one camera before its sensor saturates
