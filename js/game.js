@@ -94,6 +94,7 @@ const Game = (() => {
       stareSince: 0, stareWarned: false,
       armed: false, busy: false, nextHint: 0, nextLevelCheck: 0,
       used: new Set(), stats: { cleared: 0, falseReports: 0, spawned: 0 },
+      warnSilence: Addons.settings('warning').on,
       history: [], lastHour: 0, photos: new Map(), anomImgs: new Map(), addons: [],
     };
     G.nextSpawn = graceMs + rand(0, 0.3) * spawnGap() * 1000;
@@ -310,7 +311,9 @@ const Game = (() => {
     t.nextMove += 2000;
   }
 
+  // Only with the "Warning silence" add-on: the hum dies before it reaches you.
   function updateSilence() {
+    if (!G.warnSilence) return;
     Sound.silence(G.threats.some(t => t.warned));
   }
 
@@ -486,8 +489,9 @@ const Game = (() => {
     disarm();
     t.rec.outcome = 'killer';
     const at = clock();
-    Sound.silence(true, 0.15);
-    Monitor.staticFor(1400);
+    // Without the warning add-on there is no build-up: the scare comes at once.
+    const lead = G.warnSilence ? 1500 : 120;
+    if (G.warnSilence) { Sound.silence(true, 0.15); Monitor.staticFor(1400); }
     center('');
     const house = G.house;
     const yours = house.rooms.find(r => r.id === house.playerRoom);
@@ -517,7 +521,7 @@ const Game = (() => {
         stop();
         onEnd(res);
       }, 1700);
-    }, 1500);
+    }, lead);
   }
 
   function win() {

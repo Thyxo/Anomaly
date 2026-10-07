@@ -10,6 +10,11 @@ const Addons = (() => {
 
   const DEFS = [
     {
+      id: 'warning',
+      name: 'Warning silence',
+      description: 'For the easily scared: the hum fades out a few seconds before something reaches your room, and the screen fills with static before the end. You get time to brace yourself.',
+    },
+    {
       id: 'deadcam',
       name: 'Dead cameras',
       description: 'Now and then a camera loses its signal. Hold REBOOT for a few seconds to bring it back. While it is down you are blind in that room, and things can still move there.',

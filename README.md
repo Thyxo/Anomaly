@@ -90,6 +90,7 @@ Optional rules for any mode, switched on in the main menu. Each one must give th
 | **Dead cameras** | Now and then a camera loses its signal. Hold *Reboot* (or `B`) for 3 s on that camera to fix it. While it is down you are blind there — and things can still appear and move in that room. |
 | **Battery** | Every camera switch costs 2.5 % power; power returns at 0.35 %/s. At 0 % every feed goes dark for 10 s, then the generator restarts at 30 %. Switching often keeps sensors cool but drains you. |
 | **Camera filters** | Night vision, worn VHS tape or thermal (fixed, or random each shift). |
+| **Warning silence** | For the easily scared: the hum fades out before something reaches you, with static before the scare. Off by default — normally the jumpscare comes without warning. |
 
 New add-ons live in `js/addons.js` and hook into the shift at fixed points (start, tick, camera switch,
 "is this feed dead?", stop).
