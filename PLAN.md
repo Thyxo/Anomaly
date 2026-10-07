@@ -34,7 +34,11 @@ Status: kun plan, ingen kode endnu. Skrevet på dansk, fordi det er et arbejdsdo
 **B. Flere samtidige og hurtigere rytme**
 - Højere `maxThreats` (nat 1: 2, nat 2: 3, nat 3+: 4).
 - Kortere `spawnEvery` på nat 1 (fx ca. 40 sekunder i stedet for 75).
-- Mål: nat 1 giver 5-7 anomalier, nat 2 ca. 8-10, nat 3 ca. 11-14 for en 7-minutters nat. Antallet skal skalere med nattens længde.
+- Mål pr. minut (skalerer med nattens længde, brugeren spiller 4 minutter): nat 1 ca. 0,75, nat 2 ca. 1,25, nat 3 ca. 1,75, derefter stigende.
+  - 4-minutters nat: ca. 3 / 5 / 7 anomalier.
+  - 7-minutters nat: ca. 5 / 9 / 12.
+  - Nat 1 på 4 minutter skal give omkring 3 (brugerens ønske). De første 30 sekunder er stadig uden anomalier.
+- Korte nætter: kun 1-2 samtidige på nat 1, så det ikke bliver rodet.
 
 **C. Rejsetid uafhængig af afstand**
 - I dag er tiden fra spawn til dig = antal skridt × `moveEvery`. Langt væk betyder ventetid, tæt på betyder næsten ingen tid.
@@ -136,4 +140,4 @@ Batteri, kamerafiltre og andre ideer, bygget på addon-systemet.
 2. Gennemgang: skal fundne anomalier også vises? (Antaget ja.)
 3. Delingslink: er 7 dages udløb fint?
 4. Co-op: er ekstern stemme i orden i første version?
-5. Tempo (fase 0): hvad er et passende antal anomalier pr. nat for dig? Jeg har foreslået 5-7 / 8-10 / 11-14.
+5. Tempo (fase 0): besvaret. Nat 1 ca. 3 på 4 minutter, ca. 0,75 pr. minut. Nat 2+ er foreslået og kan justeres efter test.
